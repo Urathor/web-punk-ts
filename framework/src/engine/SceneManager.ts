@@ -31,11 +31,15 @@ export class SceneManager {
     }
     this.stack.push(scene)
     scene.onEnter(engine)
+    engine.events.emit('scene:pushed', { name: scene.constructor.name })
   }
 
-  pop(): void {
+  pop(engine: IEngine): void {
     const scene = this.stack.pop()
     scene?.onExit()
+    if (scene) {
+      engine.events.emit('scene:popped', { name: scene.constructor.name })
+    }
     this.activeScene?.onResume()
   }
 
@@ -56,6 +60,7 @@ export class SceneManager {
     }
     this.stack.push(scene)
     scene.onEnter(engine)
+    engine.events.emit('scene:replaced', { name: scene.constructor.name })
   }
 
   clear(): void {
@@ -88,6 +93,7 @@ export class SceneManager {
     }
     this.stack.push(scene)
     scene.onEnter(engine)
+    engine.events.emit('scene:replaced', { name: scene.constructor.name })
     this.stack.push(topScene)
   }
 }

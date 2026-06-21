@@ -73,18 +73,20 @@ export class Engine implements IEngine {
   /** Preload the initial scene then start the game loop. */
   async start(initialScene: IScene): Promise<void> {
     await this.sceneManager.push(initialScene, this)
+    this.events.emit('engine:started', { timestamp: Date.now() })
     this.loop.start()
   }
 
   stop(): void {
     this.loop.stop()
     this.input.dispose()
+    this.events.emit('engine:stopped', {})
   }
 
   // ── Scene stack convenience (fire-and-forget during loop) ─────────────────
 
   pushScene(scene: IScene): void         { void this.sceneManager.push(scene, this) }
-  popScene():                 void       { this.sceneManager.pop() }
+  popScene():                 void       { this.sceneManager.pop(this) }
   replaceScene(scene: IScene): void      { void this.sceneManager.replace(scene, this) }
   replaceSceneUnder(scene: IScene): void { void this.sceneManager.replaceUnder(scene, this) }
 

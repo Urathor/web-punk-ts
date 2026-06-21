@@ -32,15 +32,4 @@ export interface GameEventMap {
 
   // ── Entities ──────────────────────────────────────────────────────────────
   'entity:destroyed': { entity: Entity }
-
-  // ── Demo game events ─────────────────────────────────────────────────────
-  'player:damaged':      { amount: number; remaining: number }
-  'player:healed':       { amount: number }
-  'player:died':         Record<string, never>
-  'player:interact':     { x: number; y: number }
-  'coin:collected':      { value: number }
-  'switch:activated':    Record<string, never>
-  'box:moved':           { tileX: number; tileY: number }
-  'chest:opened':        Record<string, never>
-  'chest:messageDone':   Record<string, never>
 }

@@ -8,15 +8,14 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "paths": {
-      "@engine/*": ["./src/*"],
-      "@games/*":  ["../games/*"]
+      "@engine/*": ["./src/*"]
     },
-    "rootDir":          "..",
+    "rootDir":          ".",
     "outDir":           "dist",
     "sourceMap":        true,
     "resolveJsonModule": true,
     "skipLibCheck":     true,
     "types":            ["vitest/globals"]
   },
-  "include": ["src", "tests", "../games"]
+  "include": ["src", "tests"]
 }

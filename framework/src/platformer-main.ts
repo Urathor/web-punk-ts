@@ -1,3 +1,3 @@
 import './style.css'
-// Platformer game entry point
-import '@games/platformer/main'
+// Legacy dev shell entry point.
+// Intentionally does not import demo game code.

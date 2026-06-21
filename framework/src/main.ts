@@ -1,3 +1,3 @@
 import './style.css'
-// Vite entry point — all game bootstrap lives in games/demo/main.ts
-import '@games/demo/main'
+// Framework dev shell entry point.
+// Intentionally does not import demo game code.
