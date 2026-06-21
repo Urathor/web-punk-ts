@@ -183,21 +183,35 @@ engine.popScene()                     // resume previous scene
 Create game objects by subclassing `Entity` and adding components in the constructor:
 
 ```typescript
-import { Entity    } from '@engine/entities'
-import { Transform } from '@engine/entities/components/Transform'
+import { Entity         } from '@engine/entities'
+import { Transform      } from '@engine/entities/components/Transform'
 import { SpriteRenderer } from '@engine/entities/components/SpriteRenderer'
-import { BoxCollider    } from '@engine/collision'
+import { BoxCollider, CollisionLayer } from '@engine/collision'
+import { SpriteSheet    } from '@engine/animation'
+import { Vector2        } from '@engine/math'
+import type { Texture   } from '@engine/assets/Texture'
 
 class Player extends Entity {
-  constructor(texture: Texture, x: number, y: number) {
+  readonly collider: BoxCollider
+
+  constructor(tex: Texture, spawnX: number, spawnY: number) {
     super('player')
+
     const t  = this.addComponent(new Transform())
-    const sr = this.addComponent(new SpriteRenderer())
-    const bc = this.addComponent(new BoxCollider(14, 14))
-    t.position.x = x
-    t.position.y = y
-    const sheet = new SpriteSheet(texture, 16, 16)
-    sr.sprite = sheet.sprite(0, 0)
+    t.position = new Vector2(spawnX, spawnY)
+
+    const sheet = new SpriteSheet(tex, 16)        // 16×16 tiles
+    const sr    = this.addComponent(new SpriteRenderer())
+    sr.sprite     = sheet.sprite(2, 0)
+    sr.drawWidth  = 16
+    sr.drawHeight = 16
+
+    this.collider        = this.addComponent(new BoxCollider())
+    this.collider.width  = 12
+    this.collider.height = 12
+    this.collider.offset = new Vector2(-6, -6)    // centre the 12×12 box
+    this.collider.layer  = CollisionLayer.Player
+    this.collider.mask   = CollisionLayer.Enemy
   }
 }
 ```
@@ -527,17 +541,23 @@ engine.input.isMousePressed(0)         // left button
 import { BoxCollider    } from '@engine/collision'
 import { CircleCollider } from '@engine/collision'
 import { CollisionFace  } from '@engine/collision'
+import { CollisionLayer } from '@engine/collision'
 ```
 
 #### `BoxCollider`
 
+`BoxCollider` takes no constructor arguments — create it, then set its properties
+(`width` and `height` default to `16`):
+
 ```typescript
-const bc = this.addComponent(new BoxCollider(width, height))
-bc.offset    = new Vector2(0, 0)   // offset from entity position
-bc.isTrigger = false               // true = no physics response, just events
-bc.isStatic  = false               // true = immovable (for walls, platforms)
-bc.layer     = 0b0001              // bitmask: which layer this collider is on
-bc.mask      = 0b1111              // bitmask: which layers this collider hits
+const bc = this.addComponent(new BoxCollider())
+bc.width     = 12                       // collider size in logical pixels (default 16)
+bc.height    = 12
+bc.offset    = new Vector2(-6, -6)      // offset from entity position (centres the box)
+bc.isTrigger = false                    // true = no physics response, just events
+bc.isStatic  = false                    // true = immovable (for walls, platforms)
+bc.layer     = CollisionLayer.Player    // which layer this collider sits on
+bc.mask      = CollisionLayer.Enemy     // which layers this collider tests against
 
 // Callbacks
 bc.onCollisionEnter = (other, face) => { ... }
@@ -588,8 +608,9 @@ Maps are created in [Tiled](https://www.mapeditor.org/) and exported as JSON (`.
 
 ```typescript
 async preload(engine: IEngine): Promise<void> {
-  const tex = await engine.assets.loadTexture('/sprites/tiles.png')
-  this._map = await TiledJsonLoader.load('/levels/world.tmj', engine.assets)
+  // The loader reads the tileset image referenced by the map, so you don't
+  // need to load the tileset texture yourself.
+  this._map = await new TiledJsonLoader(engine.assets).load('/levels/world.tmj')
 }
 ```
 
@@ -675,11 +696,10 @@ const clips  = await loader.load('/animations/player-animations.json')
 ### UI
 
 ```typescript
-import { UIManager    } from '@engine/ui'
-import { UICanvas    } from '@engine/ui'
-import { UIElement   } from '@engine/ui'
-import { Anchor      } from '@engine/ui'
-import { BitmapFont  } from '@engine/ui'
+import {
+  UIManager, UICanvas, UIElement, Anchor, BitmapFont,
+  UIText, UIPanel, UIProgressBar, UIButton, UIImage, UIGrid,
+} from '@engine/ui'
 ```
 
 UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed via `engine.ui`. All coordinates and sizes are in logical pixels.
@@ -688,7 +708,7 @@ UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed 
 
 | Method | Description |
 |---|---|
-| `add(canvas)` | Create and register a `UICanvas` |
+| `add(canvas)` | Register an existing `UICanvas` and return it |
 | `get(name)` | Find a canvas by name |
 | `remove(name)` | Remove a canvas by name |
 | `clear()` | Remove all canvases (called automatically when scenes exit) |
@@ -700,11 +720,10 @@ UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed 
 A named container for UI elements, rendered in sort order:
 
 ```typescript
-const hud = new UICanvas('hud', 10)  // name, sortOrder
-engine.ui.add(hud)
+const hud = engine.ui.add(new UICanvas('hud', 10))  // name, sortOrder
 
-hud.addElement(new MyUIElement())
-hud.visible = true
+hud.addElement(new UIText())
+hud.visible   = true
 hud.sortOrder = 10
 ```
 
@@ -718,122 +737,185 @@ hud.sortOrder = 10
 
 #### `UIElement` (base class)
 
-Subclass `UIElement` to create custom UI widgets:
-
-```typescript
-class TextLabel extends UIElement {
-  text: string = ''
-  color: string = '#ffffff'
-  size: number = 12
-
-  constructor(x: number, y: number, width: number, height: number) {
-    super()
-    this.offset = new Vector2(x, y)
-    this.width = width
-    this.height = height
-  }
-
-  render(renderer: IRenderer, _interpolation: number): void {
-    renderer.drawText(this.text, this.getPosition(), {
-      color: this.color,
-      size: this.size,
-      align: 'left',
-    })
-  }
-
-  onAttach(): void {
-    // Called when added to a canvas
-  }
-}
-```
+The base `UIElement` class provides these shared members:
 
 | Member | Description |
 |---|---|
 | `anchor` | `Anchor` enum for positioning (see below) |
-| `offset` | `Vector2` offset from anchor point |
+| `offset` | `Vector2` offset from the anchor point |
 | `width` | Element width in logical pixels |
 | `height` | Element height in logical pixels |
 | `visible` | Show or hide this element |
-| `sortOrder` | Render order within the canvas (higher = on top) |
+| `sortOrder` | Render order within the canvas (lower renders first) |
 | `getPosition()` | Compute top-left position: `anchor + offset` |
 | `getBounds()` | Get bounding `Rect` in logical pixels |
-| `render(renderer, interpolation)` | Override to draw the element |
-| `update(dt)` | Override for animations or interaction logic |
-| `onAttach()` | Override; called when added to a canvas |
+| `render(renderer, interpolation)` | Abstract — each widget implements this |
+| `update(dt)` | Optional — override for animation or interaction |
+| `onAttach()` | Optional — called when added to a canvas |
+
+The framework ships with ready-made widgets (below), so you rarely subclass
+`UIElement` directly. When you do need a bespoke widget, implement `render`:
+
+```typescript
+import { UIElement } from '@engine/ui'
+import type { IRenderer } from '@engine/renderer'
+
+class Crosshair extends UIElement {
+  render(renderer: IRenderer): void {
+    const p = this.getPosition()
+    renderer.drawRect({ x: p.x - 4, y: p.y, width: 8, height: 1 }, '#ffffff')
+    renderer.drawRect({ x: p.x, y: p.y - 4, width: 1, height: 8 }, '#ffffff')
+  }
+}
+```
+
+#### Built-in widgets
+
+Import any of these from `@engine/ui` and add them with `canvas.addElement(...)`,
+which returns the element so you can configure it inline.
+
+**`UIText`** — a line of text.
+
+| Property | Description |
+|---|---|
+| `text` | The string to draw |
+| `color` | CSS colour (default `'#ffffff'`) |
+| `fontSize` | Size in logical pixels when no `bitmapFont` is set (default `8`) |
+| `bitmapFont` | Optional `BitmapFont` for pixel text |
+| `fontScale` | Scale applied when using a `bitmapFont` |
+
+**`UIPanel`** — a filled / outlined rectangle.
+
+| Property | Description |
+|---|---|
+| `fillColor` | Background colour |
+| `borderColor` | Border colour |
+| `borderWidth` | Border thickness |
+| `showFill` / `showBorder` | Toggle fill and border independently |
+
+**`UIProgressBar`** — a fill bar for health, loading, etc.
+
+| Property | Description |
+|---|---|
+| `value` | Fill ratio `0.0`–`1.0` |
+| `orientation` | `'horizontal'` (default) or `'vertical'` |
+| `reversed` | Fill from the far end (right-to-left / bottom-to-top) |
+| `fillColor` / `backgroundColor` / `borderColor` | Colours |
+| `showBorder` | Draw the border (default `true`) |
+
+**`UIButton`** — a clickable button. Pass `engine.input` to the constructor.
+
+| Member | Description |
+|---|---|
+| `label` | Button text |
+| `onClick` | Callback fired on release inside the button |
+| `normal` / `hover` / `pressed` | `ButtonColors` (`{ fill, border, text }`) per state |
+| `bitmapFont` / `fontSize` | Text-rendering options |
+
+**`UIImage`** — draws a `Sprite`. Set `sprite`, plus optional `width` / `height` to scale.
+
+**`UIGrid`** — a grid of cells (inventory, hotbar). Configure `columns`, `rows`,
+`cellSize`, and `padding`; fill cells with `setCell(row, col, { sprite, quantity, selected })`.
 
 #### `Anchor`
 
-Position UI elements using anchors (like game engines):
+Position UI elements relative to the 320 × 240 screen:
 
 ```typescript
 import { Anchor } from '@engine/ui'
 
-const label = new TextLabel(10, 20, 100, 20)
-label.anchor = Anchor.TopLeft        // default
-label.anchor = Anchor.TopCenter
-label.anchor = Anchor.TopRight
-label.anchor = Anchor.MiddleLeft
-label.anchor = Anchor.Center
-label.anchor = Anchor.MiddleRight
-label.anchor = Anchor.BottomLeft
-label.anchor = Anchor.BottomCenter
-label.anchor = Anchor.BottomRight
+element.anchor = Anchor.TopLeft        // default
+element.anchor = Anchor.TopCenter
+element.anchor = Anchor.TopRight
+element.anchor = Anchor.MiddleLeft
+element.anchor = Anchor.Center
+element.anchor = Anchor.MiddleRight
+element.anchor = Anchor.BottomLeft
+element.anchor = Anchor.BottomCenter
+element.anchor = Anchor.BottomRight
 ```
 
-Anchor resolves to a logical pixel position on screen:
+The anchor resolves to a logical-pixel point, then `offset` is added:
 - `TopLeft = (0, 0)`, `TopCenter = (160, 0)`, `TopRight = (320, 0)`
-- `Center = (160, 120)`, etc.
+- `Center = (160, 120)`, `BottomRight = (320, 240)`, etc.
+
+Use a negative `offset` to inset from the right/bottom edges — e.g. `Anchor.TopRight`
+with `offset = new Vector2(-52, 6)` sits just inside the top-right corner.
 
 #### `BitmapFont`
 
-Render bitmap text (pixel fonts). Requires a spritesheet and character mapping:
+Render crisp pixel text from a sprite sheet. Load from a JSON descriptor, or build
+one directly from a loaded texture:
 
 ```typescript
-const fontTexture = await engine.assets.loadTexture('/fonts/default.png')
-const font = new BitmapFont(fontTexture, {
-  charWidth: 6,
-  charHeight: 8,
-  charsPerRow: 16,
-  baseline: 8,
-})
+import { BitmapFont } from '@engine/ui'
 
-// Render bitmap text
-font.drawText(renderer, 'Hello World', x, y)
+// JSON descriptor fields: { texture, charWidth, charHeight, chars, charsPerRow }
+const font = await BitmapFont.load('/fonts/default.json', engine.assets)
+
+// …or construct it manually:
+const tex   = await engine.assets.loadTexture('/fonts/default.png')
+const font2 = new BitmapFont({
+  texture:     tex,
+  charWidth:   6,
+  charHeight:  8,
+  chars:       'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?',
+  charsPerRow: 16,
+})
 ```
 
-#### Example: HUD with score and health
+| Method | Description |
+|---|---|
+| `drawString(renderer, text, x, y, scale?)` | Draw text at a logical-pixel position |
+| `measureString(text, scale?)` | Returns `{ width, height }` |
+| `BitmapFont.load(path, assets)` | Static — load from a JSON descriptor |
+
+Assign a `BitmapFont` to a `UIText` (or `UIButton` / `UIGrid`) through its
+`bitmapFont` property to use it in place of the default canvas font.
+
+#### Example: building a HUD
+
+This is the HUD from the `games/demo` project — a health bar, coin counter and hint
+label assembled in a scene's `onEnter`. `addElement` returns the widget, so each one
+is configured immediately after it is added:
 
 ```typescript
-import { UICanvas, UIElement, Anchor } from '@engine/ui'
+import { UICanvas, UIText, UIProgressBar, Anchor } from '@engine/ui'
 import { Vector2 } from '@engine/math'
+import type { IEngine } from '@engine/engine/IEngine'
 
-class HUDCanvas extends UICanvas {
-  private scoreLabel: TextLabel
-  private healthLabel: TextLabel
+function buildHud(engine: IEngine): { healthBar: UIProgressBar; coinText: UIText } {
+  const hud = engine.ui.add(new UICanvas('hud', 0))   // name, sortOrder
 
-  constructor() {
-    super('hud', 100)
+  const hpLabel  = hud.addElement(new UIText())
+  hpLabel.text   = 'HP'
+  hpLabel.anchor = Anchor.TopLeft
+  hpLabel.offset = new Vector2(4, 6)
+  hpLabel.color  = '#cccccc'
 
-    this.scoreLabel = this.addElement(new TextLabel(10, 10, 100, 16))
-    this.scoreLabel.anchor = Anchor.TopLeft
+  const healthBar           = hud.addElement(new UIProgressBar())
+  healthBar.anchor          = Anchor.TopLeft
+  healthBar.offset          = new Vector2(16, 4)
+  healthBar.width           = 56
+  healthBar.height          = 8
+  healthBar.fillColor       = '#cc3333'
+  healthBar.backgroundColor = '#441111'
+  healthBar.value           = 1.0
 
-    this.healthLabel = this.addElement(new TextLabel(310, 10, 100, 16))
-    this.healthLabel.anchor = Anchor.TopRight
-    this.healthLabel.offset.x = -10
-  }
+  const coinText  = hud.addElement(new UIText())
+  coinText.text   = 'Coins: 0'
+  coinText.anchor = Anchor.TopRight
+  coinText.offset = new Vector2(-52, 6)
+  coinText.color  = '#ffdd44'
 
-  setScore(score: number): void {
-    this.scoreLabel.text = `Score: ${score}`
-  }
-
-  setHealth(hp: number): void {
-    this.healthLabel.text = `HP: ${hp}`
-  }
+  return { healthBar, coinText }
 }
 
-// In your scene's onEnter:
-const hud = new HUDCanvas()
-engine.ui.add(hud)
+// Update widgets as game state changes:
+//   healthBar.value = player.health / player.maxHealth
+//   coinText.text   = `Coins: ${count}`
+//
+// All canvases are cleared automatically when the scene exits (engine.ui.clear()).
 ```
 
 ---
