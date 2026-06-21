@@ -22,6 +22,7 @@ A lightweight 2D canvas game framework for TypeScript, inspired by the classic [
   - [Collision](#collision)
   - [Tilemap](#tilemap)
   - [Animation](#animation)
+  - [UI](#ui)
   - [Audio](#audio)
   - [Assets](#assets)
   - [Events](#events)
@@ -262,6 +263,7 @@ import type { IEngine } from '@engine/engine/IEngine'
 | `events` | `EventEmitter<GameEventMap>` | Global typed event bus |
 | `save` | `SaveManager` | Persistent save data |
 | `debug` | `boolean` | Whether debug mode is active |
+| `ui` | `UIManager` | Screen-space UI canvas management |
 
 #### Scene management methods
 
@@ -666,6 +668,172 @@ Animation data can be stored as JSON and loaded via `AnimationClipLoader`:
 ```typescript
 const loader = new AnimationClipLoader(engine.assets)
 const clips  = await loader.load('/animations/player-animations.json')
+```
+
+---
+
+### UI
+
+```typescript
+import { UIManager    } from '@engine/ui'
+import { UICanvas    } from '@engine/ui'
+import { UIElement   } from '@engine/ui'
+import { Anchor      } from '@engine/ui'
+import { BitmapFont  } from '@engine/ui'
+```
+
+UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed via `engine.ui`. All coordinates and sizes are in logical pixels.
+
+#### `UIManager`
+
+| Method | Description |
+|---|---|
+| `add(canvas)` | Create and register a `UICanvas` |
+| `get(name)` | Find a canvas by name |
+| `remove(name)` | Remove a canvas by name |
+| `clear()` | Remove all canvases (called automatically when scenes exit) |
+| `update(dt)` | Update all canvases (called by engine each frame) |
+| `render(renderer, interpolation)` | Render all canvases (called by engine each frame) |
+
+#### `UICanvas`
+
+A named container for UI elements, rendered in sort order:
+
+```typescript
+const hud = new UICanvas('hud', 10)  // name, sortOrder
+engine.ui.add(hud)
+
+hud.addElement(new MyUIElement())
+hud.visible = true
+hud.sortOrder = 10
+```
+
+| Member | Description |
+|---|---|
+| `name` | Canvas identifier |
+| `visible` | Show or hide all elements in this canvas |
+| `sortOrder` | Render order (higher = on top) |
+| `addElement(element)` | Add a UI element; calls `element.onAttach()` |
+| `removeElement(element)` | Remove an element |
+
+#### `UIElement` (base class)
+
+Subclass `UIElement` to create custom UI widgets:
+
+```typescript
+class TextLabel extends UIElement {
+  text: string = ''
+  color: string = '#ffffff'
+  size: number = 12
+
+  constructor(x: number, y: number, width: number, height: number) {
+    super()
+    this.offset = new Vector2(x, y)
+    this.width = width
+    this.height = height
+  }
+
+  render(renderer: IRenderer, _interpolation: number): void {
+    renderer.drawText(this.text, this.getPosition(), {
+      color: this.color,
+      size: this.size,
+      align: 'left',
+    })
+  }
+
+  onAttach(): void {
+    // Called when added to a canvas
+  }
+}
+```
+
+| Member | Description |
+|---|---|
+| `anchor` | `Anchor` enum for positioning (see below) |
+| `offset` | `Vector2` offset from anchor point |
+| `width` | Element width in logical pixels |
+| `height` | Element height in logical pixels |
+| `visible` | Show or hide this element |
+| `sortOrder` | Render order within the canvas (higher = on top) |
+| `getPosition()` | Compute top-left position: `anchor + offset` |
+| `getBounds()` | Get bounding `Rect` in logical pixels |
+| `render(renderer, interpolation)` | Override to draw the element |
+| `update(dt)` | Override for animations or interaction logic |
+| `onAttach()` | Override; called when added to a canvas |
+
+#### `Anchor`
+
+Position UI elements using anchors (like game engines):
+
+```typescript
+import { Anchor } from '@engine/ui'
+
+const label = new TextLabel(10, 20, 100, 20)
+label.anchor = Anchor.TopLeft        // default
+label.anchor = Anchor.TopCenter
+label.anchor = Anchor.TopRight
+label.anchor = Anchor.MiddleLeft
+label.anchor = Anchor.Center
+label.anchor = Anchor.MiddleRight
+label.anchor = Anchor.BottomLeft
+label.anchor = Anchor.BottomCenter
+label.anchor = Anchor.BottomRight
+```
+
+Anchor resolves to a logical pixel position on screen:
+- `TopLeft = (0, 0)`, `TopCenter = (160, 0)`, `TopRight = (320, 0)`
+- `Center = (160, 120)`, etc.
+
+#### `BitmapFont`
+
+Render bitmap text (pixel fonts). Requires a spritesheet and character mapping:
+
+```typescript
+const fontTexture = await engine.assets.loadTexture('/fonts/default.png')
+const font = new BitmapFont(fontTexture, {
+  charWidth: 6,
+  charHeight: 8,
+  charsPerRow: 16,
+  baseline: 8,
+})
+
+// Render bitmap text
+font.drawText(renderer, 'Hello World', x, y)
+```
+
+#### Example: HUD with score and health
+
+```typescript
+import { UICanvas, UIElement, Anchor } from '@engine/ui'
+import { Vector2 } from '@engine/math'
+
+class HUDCanvas extends UICanvas {
+  private scoreLabel: TextLabel
+  private healthLabel: TextLabel
+
+  constructor() {
+    super('hud', 100)
+
+    this.scoreLabel = this.addElement(new TextLabel(10, 10, 100, 16))
+    this.scoreLabel.anchor = Anchor.TopLeft
+
+    this.healthLabel = this.addElement(new TextLabel(310, 10, 100, 16))
+    this.healthLabel.anchor = Anchor.TopRight
+    this.healthLabel.offset.x = -10
+  }
+
+  setScore(score: number): void {
+    this.scoreLabel.text = `Score: ${score}`
+  }
+
+  setHealth(hp: number): void {
+    this.healthLabel.text = `HP: ${hp}`
+  }
+}
+
+// In your scene's onEnter:
+const hud = new HUDCanvas()
+engine.ui.add(hud)
 ```
 
 ---
