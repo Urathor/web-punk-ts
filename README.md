@@ -27,6 +27,7 @@ A lightweight 2D canvas game framework for TypeScript, inspired by the classic [
   - [Events](#events)
   - [Save System](#save-system)
   - [Math](#math)
+  - [Tweens](#tweens)
 
 ---
 
@@ -301,6 +302,23 @@ export class MyScene implements IScene {
 
 `preload` is optional. If omitted the scene enters immediately. `reportProgress` drives any loading bar you implement.
 
+#### `FadeScene` — built-in fade transition
+
+Push a `FadeScene` on top of the stack to cross-fade between two scenes. It fades to black over `halfDurationMs`, fires `onMidpoint` (swap the scene below), then fades back.
+
+```typescript
+import { FadeScene } from '@engine/engine'
+
+// In a scene's update():
+engine.pushScene(new FadeScene(300, (eng) => {
+  eng.replaceSceneUnder(new GameScene())
+}))
+```
+
+#### `LoadingScene` — built-in loading screen
+
+`LoadingScene` is used automatically by the engine whenever a scene has a `preload()` method. You do not instantiate it directly. It displays a progress bar that smoothly animates toward the reported progress value. To create a fully custom loading screen, implement `IScene` and manage asset loading manually inside `onEnter`.
+
 ---
 
 ### Entity & Components
@@ -457,7 +475,7 @@ All coordinates and sizes are in **logical pixels** (320 × 240 space). The rend
 | `drawImage(image, srcRect, dstRect)` | Draw a sprite or canvas region |
 | `drawRect(rect, color, fill?)` | Draw a filled (default) or outlined rectangle |
 | `drawLine(from, to, color, lineWidth?)` | Draw a line |
-| `drawText(text, position, style)` | Draw text. `style: { color, size, font? }` |
+| `drawText(text, position, style)` | Draw text. `style: { color, size, font?, align? }` — `align` is `'left'` \| `'center'` \| `'right'`, defaults to `'left'`. Pass `x: cx` with `align: 'center'` to anchor text to the screen centre. |
 | `pushTransform(x, y, scaleX?, scaleY?)` | Save state and apply offset/scale |
 | `popTransform()` | Restore previous transform state |
 | `logicalWidth / logicalHeight` | Always 320 / 240 |
@@ -807,6 +825,80 @@ import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
 ```
 
 Game-specific constants (gravity, speeds, tile size, etc.) belong in your game's `src/constants.ts`.
+
+---
+
+## Tweens
+
+```typescript
+import { Tween, Easing } from '@engine/tween'
+import type { EasingFn } from '@engine/tween'
+```
+
+Tweens interpolate a `number` from one value to another over a fixed duration. They are **manually ticked** — call `tween.tick(dt)` inside your scene or component's `update(dt)`.
+
+### `new Tween(options)`
+
+| Option | Type | Description |
+|---|---|---|
+| `from` | `number` | Start value |
+| `to` | `number` | End value |
+| `duration` | `number` | Duration in milliseconds |
+| `easing` | `EasingFn` | An `Easing.*` function or custom `(t) => number` |
+| `onUpdate` | `(value: number) => void` | Called every tick with the current value |
+| `onComplete` | `() => void` (optional) | Called once when the tween finishes (not fired for `loop` or `pingPong`) |
+| `loop` | `boolean` (optional) | Restart from `from` when complete |
+| `pingPong` | `boolean` (optional) | Reverse direction each time it completes, oscillating between `from` and `to` |
+
+### Methods
+
+| Member | Description |
+|---|---|
+| `tick(dt)` | Advance the tween by `dt` ms. Call in `update(dt)`. |
+| `isComplete` | `true` once finished (non-looping, non-pingPong) or cancelled |
+| `cancel()` | Stop immediately without firing `onComplete` |
+| `reset()` | Restart from the beginning; clears a previous cancel |
+
+### Examples
+
+```typescript
+// One-shot: fade an overlay out
+const fade = new Tween({
+  from: 1, to: 0, duration: 400,
+  easing: Easing.easeOutQuad,
+  onUpdate: (v) => { this._alpha = v },
+  onComplete: () => engine.popScene(),
+})
+// In update(dt):
+fade.tick(dt)
+```
+
+```typescript
+// PingPong: pulse a UI element size from 7 → 9 → 7 continuously
+const pulse = new Tween({
+  from: 7, to: 9, duration: 900,
+  easing: Easing.easeInOutQuad,
+  pingPong: true,
+  onUpdate: (v) => { this._textSize = v },
+})
+// In update(dt):
+pulse.tick(dt)
+// In onPause / onExit:
+pulse.cancel()
+```
+
+### `Easing` functions
+
+```typescript
+Easing.linear
+Easing.easeInQuad    / easeOutQuad    / easeInOutQuad
+Easing.easeInCubic   / easeOutCubic   / easeInOutCubic
+Easing.easeInBack    / easeOutBack    / easeInOutBack
+// Custom:
+const snap: EasingFn = (t) => t * t * t
+```
+
+All easing functions take a normalised time `t ∈ [0, 1]` and return a value in `[0, 1]`.
 
 ---
 
