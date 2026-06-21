@@ -1,10 +1,20 @@
 import type { IScene    } from '@engine/engine/IScene'
 import type { IEngine   } from '@engine/engine/IEngine'
 import type { IRenderer } from '@engine/renderer'
+import { FadeScene       } from '@engine/engine'
+import { Tween, Easing   } from '@engine/tween'
 
 export class TitleScene implements IScene {
-  private _engine!: IEngine
-  private _blinkTimer = 0
+  private _engine!:    IEngine
+  private _promptSize  = 7
+  private _promptTween = new Tween({
+    from:     7,
+    to:       9,
+    duration: 750,
+    easing:   Easing.easeInOutQuad,
+    pingPong: true,
+    onUpdate: (v) => { this._promptSize = v },
+  })
 
   onEnter(engine: IEngine): void {
     this._engine = engine
@@ -13,20 +23,22 @@ export class TitleScene implements IScene {
   }
 
   onExit():   void {}
-  onPause():  void {}
-  onResume(): void {}
+  onPause():  void { this._promptTween.cancel() }
+  onResume(): void { this._promptTween.reset()  }
   fixedUpdate(_dt: number): void {}
 
   update(dt: number): void {
-    this._blinkTimer = (this._blinkTimer + dt) % 1200
+    this._promptTween.tick(dt)
 
     if (
       this._engine.input.isKeyPressed('Enter') ||
       this._engine.input.isKeyPressed('Space')
     ) {
-      void import('./GameScene').then(({ GameScene }) =>
-        this._engine.replaceScene(new GameScene())
-      )
+      this._engine.pushScene(new FadeScene(300, (eng) => {
+        void import('./GameScene').then(({ GameScene }) =>
+          eng.replaceSceneUnder(new GameScene())
+        )
+      }))
     }
   }
 
@@ -38,13 +50,11 @@ export class TitleScene implements IScene {
 
     renderer.drawText('MY GAME', { x: cx - 30, y: cy - 40 }, { color: '#ffdd44', size: 12 })
 
-    if (this._blinkTimer < 600) {
-      renderer.drawText(
-        'Press Enter to Start',
-        { x: cx - 66, y: cy + 10 },
-        { color: '#ffffff', size: 7 }
-      )
-    }
+    renderer.drawText(
+      'Press Enter to Start',
+      { x: cx, y: cy + 10 },
+      { color: '#ffffff', size: this._promptSize, align: 'center' }
+    )
 
     renderer.drawText(
       'Arrow keys / WASD · Space · Esc',

@@ -110,7 +110,9 @@ export class CanvasRenderer implements IRenderer {
   drawText(text: string, position: IPoint, style: TextStyle): void {
     this.ctx.fillStyle = style.color
     this.ctx.font      = `${style.size}px ${style.font ?? 'monospace'}`
+    this.ctx.textAlign = style.align ?? 'left'
     this.ctx.fillText(text, position.x, position.y)
+    this.ctx.textAlign = 'left'
   }
 
   pushTransform(offsetX: number, offsetY: number, scaleX = 1, scaleY = 1): void {

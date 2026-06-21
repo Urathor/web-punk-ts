@@ -10,6 +10,8 @@ export interface TextStyle {
   size:   number
   /** CSS font family string. Defaults to 'monospace'. */
   font?:  string
+  /** Horizontal alignment relative to the position x. Defaults to 'left'. */
+  align?: 'left' | 'center' | 'right'
 }
 
 export interface IRenderer {

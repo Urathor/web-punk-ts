@@ -1,4 +1,5 @@
 export { Engine       }           from './Engine'
+export { FadeScene    }           from './FadeScene'
 export { GameLoop     }           from './GameLoop'
 export { SceneManager }           from './SceneManager'
 export type { EngineConfig }      from './EngineConfig'
