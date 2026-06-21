@@ -1,0 +1,7 @@
+export { TileMap }                                                      from './TileMap'
+export { TileMapRenderer }                                              from './TileMapRenderer'
+export type { ITileMapLoader }                                          from './ITileMapLoader'
+export { TiledJsonLoader }                                              from './loaders/TiledJsonLoader'
+export type { TilesetData, TileLayerData, ObjectLayerData, TileObject } from './TileMap'
+export { AutoTiler }                                                    from './AutoTiler'
+export type { AutoTileRuleset }                                         from './AutoTileRuleset'

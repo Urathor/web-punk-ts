@@ -1,0 +1,30 @@
+{
+  "name": "webpunk.ts",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A Canvas game framework in the spirit of FlashPunk — for web and desktop (Tauri).",
+  "license": "MIT",
+  "files": [
+    "src",
+    "tsconfig.consumer.json"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./src/*":        "./src/*"
+  },
+  "sideEffects": false,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.6",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^3.2.6"
+  }
+}

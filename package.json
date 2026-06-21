@@ -1,0 +1,14 @@
+{
+  "name": "wapp-tb-game-fw",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "framework",
+    "template"
+  ],
+  "scripts": {
+    "dev":   "npm run dev   --workspace=framework",
+    "build": "npm run build --workspace=framework",
+    "test":  "npm run test  --workspace=framework"
+  }
+}

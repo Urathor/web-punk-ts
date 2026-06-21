@@ -1,0 +1,8 @@
+export { Camera }                   from './Camera'
+export { RenderLayer }              from './RenderLayer'
+export { FollowController }         from './controllers/FollowController'
+export { RoomController }           from './controllers/RoomController'
+export type { IRenderLayer }        from './RenderLayer'
+export type { ICameraController }   from './ICameraController'
+export type { FollowControllerOptions } from './controllers/FollowController'
+export type { Room }                from './controllers/RoomController'
