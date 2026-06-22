@@ -31,8 +31,20 @@ export class CanvasRenderer implements IRenderer {
   private _scaleFilter: ScaleFilter
   get scaleFilter(): ScaleFilter { return this._scaleFilter }
 
+  // Per-camera / per-sprite smoothing (set each frame by Camera.render via
+  // setImageSmoothing). Independent of the upscale scale filter below.
   private _imageSmoothing = false
   get imageSmoothing(): boolean { return this._imageSmoothing }
+
+  /**
+   * Effective `ctx.imageSmoothingEnabled`. Smoothing is on when EITHER the camera
+   * asks for sprite smoothing OR the upscale scale filter is 'smooth'. These are two
+   * independent inputs to the single canvas smoothing flag, so the 'smooth' filter is
+   * never cancelled by Camera.render resetting its own (default-off) smoothing.
+   */
+  private get _smoothingOn(): boolean {
+    return this._imageSmoothing || this._scaleFilter === 'smooth'
+  }
 
   // Draw-call counter (dev builds only)
   private _drawCalls     = 0
@@ -55,6 +67,11 @@ export class CanvasRenderer implements IRenderer {
     this.scaleMode    = scaling.mode
     this.fixedScale   = scaling.mode === 'fixed' ? scaling.scale : 1
     this._scaleFilter = scaling.filter ?? 'pixelated'
+
+    // Set the CSS upscale hint ONCE, here at construction. Runtime scale-filter
+    // toggling only changes ctx.imageSmoothingEnabled (the in-canvas upscale) and
+    // deliberately never touches CSS again.
+    this.canvas.style.imageRendering = this._scaleFilter === 'smooth' ? 'auto' : 'pixelated'
 
     this.setupScaling()
     window.addEventListener('resize', () => this.setupScaling())
@@ -99,12 +116,13 @@ export class CanvasRenderer implements IRenderer {
     this.canvas.height = bufH
     this.canvas.style.width  = `${cssW}px`
     this.canvas.style.height = `${cssH}px`
-    this.applyScaleFilter()
 
     // Map logical coordinates onto the physical buffer. For uniform modes scaleX
-    // equals scaleY; 'stretch' produces independent per-axis scales.
+    // equals scaleY; 'stretch' produces independent per-axis scales. Setting
+    // canvas.width/height above reset the context, so re-apply smoothing here.
+    // (CSS image-rendering is set once in the constructor and not touched on resize.)
     this.ctx.setTransform(bufW / lw, 0, 0, bufH / lh, 0, 0)
-    this.ctx.imageSmoothingEnabled = false
+    this.ctx.imageSmoothingEnabled = this._smoothingOn
   }
 
   clear(color = '#000000'): void {
@@ -173,8 +191,8 @@ export class CanvasRenderer implements IRenderer {
 
   popTransform(): void {
     this.ctx.restore()
-    // restore() resets imageSmoothingEnabled to the saved value — keep it off
-    this.ctx.imageSmoothingEnabled = false
+    // restore() resets imageSmoothingEnabled to the saved value — re-apply ours
+    this.ctx.imageSmoothingEnabled = this._smoothingOn
   }
 
   pushClip(rect: IRect): void {
@@ -186,20 +204,25 @@ export class CanvasRenderer implements IRenderer {
 
   popClip(): void {
     this.ctx.restore()
-    // restore() resets imageSmoothingEnabled to the saved value — keep it off
-    this.ctx.imageSmoothingEnabled = false
+    // restore() resets imageSmoothingEnabled to the saved value — re-apply ours
+    this.ctx.imageSmoothingEnabled = this._smoothingOn
   }
 
   setImageSmoothing(enabled: boolean): void {
     this._imageSmoothing = enabled
-    this.ctx.imageSmoothingEnabled = enabled
-    // The browser upscale filter (canvas.style.imageRendering) is owned separately
-    // by scaleFilter / setScaleFilter, so it survives frames and is not reset here.
+    // The 'smooth' scale filter also forces smoothing on, so honour both inputs —
+    // this is what stops Camera.render's per-frame reset from cancelling the filter.
+    this.ctx.imageSmoothingEnabled = this._smoothingOn
   }
 
-  /** Change ctx.imageSmoothingEnabled for one draw call only. Does not touch CSS. */
+  /**
+   * Change ctx.imageSmoothingEnabled for one draw call only. Does not touch CSS.
+   * The 'smooth' scale filter forces smoothing on for every draw (whole-screen
+   * faux-CRT blur), so per-sprite/tile crisp draws (SpriteRenderer/TileMapRenderer
+   * pass `antiAlias && imageSmoothing`, normally false) cannot defeat it.
+   */
   setDrawSmoothing(enabled: boolean): void {
-    this.ctx.imageSmoothingEnabled = enabled
+    this.ctx.imageSmoothingEnabled = enabled || this._scaleFilter === 'smooth'
   }
 
   setScaleFilter(filter: ScaleFilter): void {
@@ -211,8 +234,14 @@ export class CanvasRenderer implements IRenderer {
     this.setScaleFilter(this._scaleFilter === 'smooth' ? 'pixelated' : 'smooth')
   }
 
-  /** Apply the current browser upscale filter to the canvas element. */
+  /**
+   * Apply the current upscale filter to the drawing context. This renderer upscales
+   * the logical buffer *inside* the canvas (via setTransform), so the visible result
+   * is governed entirely by ctx.imageSmoothingEnabled. The CSS image-rendering hint is
+   * set once at construction and intentionally left untouched here, so toggling the
+   * scale filter at runtime only changes context smoothing.
+   */
   private applyScaleFilter(): void {
-    this.canvas.style.imageRendering = this._scaleFilter === 'smooth' ? 'auto' : 'pixelated'
+    this.ctx.imageSmoothingEnabled = this._smoothingOn
   }
 }

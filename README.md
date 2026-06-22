@@ -158,7 +158,7 @@ const renderer = new CanvasRenderer(canvas, {
 | `stretch` | Fills both axes, ignoring aspect ratio (may distort) |
 | `fixed` | Exactly `scale ×` the logical size: `{ mode: 'fixed', scale: 3 }` |
 
-`scaling.filter` sets the browser upscale filter: `'pixelated'` (default, crisp) or `'smooth'` (bilinear, a faux-CRT blur). It is runtime-toggleable via `renderer.toggleScaleFilter()` (see the [Renderer](#renderer) section for a live example). Everything else in your game keeps working in logical pixels regardless of the resolution you choose.
+`scaling.filter` sets the upscale filter: `'pixelated'` (default, crisp nearest-neighbour) or `'smooth'` (bilinear interpolation on the in-canvas upscale, a faux-CRT blur). It is runtime-toggleable via `renderer.toggleScaleFilter()` (see the [Renderer](#renderer) section for a live example). Everything else in your game keeps working in logical pixels regardless of the resolution you choose.
 
 ### `src/events.d.ts` — custom event types
 
@@ -529,8 +529,8 @@ All coordinates and sizes are in **logical pixels** (your configured resolution,
 | `pushClip(rect)` / `popClip()` | Clip subsequent drawing to a logical-pixel rect (used by the camera viewport) |
 | `setImageSmoothing(enabled)` | In-canvas sprite smoothing (`ctx.imageSmoothingEnabled`); does not touch the browser filter |
 | `setDrawSmoothing(enabled)` | Toggle sprite smoothing for a single draw call |
-| `scaleFilter` | Current browser upscale filter: `'pixelated'` \| `'smooth'` |
-| `setScaleFilter(filter)` / `toggleScaleFilter()` | Set/toggle the browser upscale filter (`canvas.style.imageRendering`); persists across frames — `'smooth'` is a faux-CRT blur |
+| `scaleFilter` | Current upscale filter: `'pixelated'` \| `'smooth'` |
+| `setScaleFilter(filter)` / `toggleScaleFilter()` | Set/toggle the upscale filter; persists across frames. The renderer upscales the logical buffer **in-canvas**, so `'smooth'` enables bilinear interpolation on that upscale (`ctx.imageSmoothingEnabled`) for a faux-CRT blur, while `'pixelated'` keeps crisp nearest-neighbour. The matching `canvas.style.imageRendering` is set too as a HiDPI hint. |
 | `logicalWidth / logicalHeight` | The configured logical resolution (default 320 / 240) |
 
 #### Runtime scale filter
@@ -748,7 +748,7 @@ import {
   UIManager, UICanvas, UIElement, Anchor, BitmapFont,
   UIText, UIPanel, UIProgressBar, UIButton, UIImage, UIGrid,
 } from '@engine/ui'
-```
+2222```
 
 UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed via `engine.ui`. All coordinates and sizes are in logical pixels.
 
@@ -867,7 +867,7 @@ which returns the element so you can configure it inline.
 
 #### `Anchor`
 
-Position UI elements relative to the 320 × 240 screen:
+Position UI elements relative to the **configured logical resolution** (320 × 240 by default):
 
 ```typescript
 import { Anchor } from '@engine/ui'
@@ -883,9 +883,14 @@ element.anchor = Anchor.BottomCenter
 element.anchor = Anchor.BottomRight
 ```
 
-The anchor resolves to a logical-pixel point, then `offset` is added:
+The anchor resolves to a logical-pixel point, then `offset` is added. The points scale
+with your resolution — for the default 320 × 240:
 - `TopLeft = (0, 0)`, `TopCenter = (160, 0)`, `TopRight = (320, 0)`
 - `Center = (160, 120)`, `BottomRight = (320, 240)`, etc.
+
+The Engine sets the anchor reference size to the renderer's logical resolution
+automatically. To resolve anchors yourself outside the Engine, call
+`setAnchorCanvasSize(width, height)` (exported from `@engine/ui`) first.
 
 Use a negative `offset` to inset from the right/bottom edges — e.g. `Anchor.TopRight`
 with `offset = new Vector2(-52, 6)` sits just inside the top-right corner.
