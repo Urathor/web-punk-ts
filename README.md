@@ -158,14 +158,7 @@ const renderer = new CanvasRenderer(canvas, {
 | `stretch` | Fills both axes, ignoring aspect ratio (may distort) |
 | `fixed` | Exactly `scale ×` the logical size: `{ mode: 'fixed', scale: 3 }` |
 
-`scaling.filter` sets the browser upscale filter: `'pixelated'` (default, crisp) or `'smooth'` (bilinear, a faux-CRT blur). It is runtime-toggleable via `renderer.toggleScaleFilter()`. Everything else in your game keeps working in logical pixels regardless of the resolution you choose.
-
-The bundled demo (`games/demo`) keeps the default resolution and toggles the upscale filter live on the **P** key — the whole screen blurs to a faux-CRT look:
-
-```typescript
-// in a scene's update()
-if (engine.input.isKeyPressed('KeyP')) engine.renderer.toggleScaleFilter()
-```
+`scaling.filter` sets the browser upscale filter: `'pixelated'` (default, crisp) or `'smooth'` (bilinear, a faux-CRT blur). It is runtime-toggleable via `renderer.toggleScaleFilter()` (see the [Renderer](#renderer) section for a live example). Everything else in your game keeps working in logical pixels regardless of the resolution you choose.
 
 ### `src/events.d.ts` — custom event types
 
@@ -539,6 +532,17 @@ All coordinates and sizes are in **logical pixels** (your configured resolution,
 | `scaleFilter` | Current browser upscale filter: `'pixelated'` \| `'smooth'` |
 | `setScaleFilter(filter)` / `toggleScaleFilter()` | Set/toggle the browser upscale filter (`canvas.style.imageRendering`); persists across frames — `'smooth'` is a faux-CRT blur |
 | `logicalWidth / logicalHeight` | The configured logical resolution (default 320 / 240) |
+
+#### Runtime scale filter
+
+The `games/demo` game in this repo (a reference game, not bundled with the framework — only `template/` is) constructs the renderer at the default resolution and toggles the upscale filter live on the **P** key, blurring the whole screen to a faux-CRT look:
+
+```typescript
+const renderer = new CanvasRenderer(canvasEl)
+
+// …later, inside a scene's update():
+if (engine.input.isKeyPressed('KeyP')) engine.renderer.toggleScaleFilter()
+```
 
 ---
 
