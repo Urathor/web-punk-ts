@@ -1,5 +1,5 @@
 import { Vector2             } from '@engine/math'
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
+import type { IRenderer      } from '@engine/renderer'
 
 // Internal state — not exported; only used within this file
 const enum KeyState { Up, JustPressed, Held, JustReleased }
@@ -10,9 +10,11 @@ export class InputManager {
   private _mousePos    = new Vector2(0, 0)
 
   private readonly canvas: HTMLCanvasElement
+  private readonly renderer: IRenderer
 
-  constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas
+  constructor(canvas: HTMLCanvasElement, renderer: IRenderer) {
+    this.canvas   = canvas
+    this.renderer = renderer
     window.addEventListener('keydown',  this.onKeyDown)
     window.addEventListener('keyup',    this.onKeyUp)
     canvas.addEventListener('mousedown', this.onMouseDown)
@@ -104,8 +106,8 @@ export class InputManager {
     const rect = this.canvas.getBoundingClientRect()
     // Map from CSS pixels to logical pixels
     this._mousePos = new Vector2(
-      (e.clientX - rect.left) * (LOGICAL_WIDTH  / rect.width),
-      (e.clientY - rect.top)  * (LOGICAL_HEIGHT / rect.height)
+      (e.clientX - rect.left) * (this.renderer.logicalWidth  / rect.width),
+      (e.clientY - rect.top)  * (this.renderer.logicalHeight / rect.height)
     )
   }
 }

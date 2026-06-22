@@ -1,12 +1,35 @@
-import type { IRenderer, IPoint, IRect, TextStyle } from './IRenderer'
+import type { IRenderer, IPoint, IRect, TextStyle, ScaleFilter } from './IRenderer'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
 
+/** How the logical buffer is scaled to fill the browser window. */
+export type ScalingOptions =
+  ( | { mode: 'integer' | 'fit' | 'stretch' }
+    | { mode: 'fixed'; scale: number }
+  ) & {
+    /** Browser upscale filter. Defaults to 'pixelated' (crisp pixel art). */
+    filter?: ScaleFilter
+  }
+
+/** Optional construction-time configuration for {@link CanvasRenderer}. */
+export interface CanvasRendererOptions {
+  /** Logical render resolution in pixels. Defaults to 320×240. */
+  resolution?: { width: number; height: number }
+  /** Browser scaling strategy. Defaults to `{ mode: 'integer' }`. */
+  scaling?:    ScalingOptions
+}
+
 export class CanvasRenderer implements IRenderer {
-  readonly logicalWidth  = LOGICAL_WIDTH
-  readonly logicalHeight = LOGICAL_HEIGHT
+  readonly logicalWidth:  number
+  readonly logicalHeight: number
 
   private readonly canvas: HTMLCanvasElement
   private readonly ctx:    CanvasRenderingContext2D
+
+  // Browser scaling strategy, resolved from constructor options.
+  private readonly scaleMode:  'integer' | 'fit' | 'stretch' | 'fixed'
+  private readonly fixedScale: number
+  private _scaleFilter: ScaleFilter
+  get scaleFilter(): ScaleFilter { return this._scaleFilter }
 
   private _imageSmoothing = false
   get imageSmoothing(): boolean { return this._imageSmoothing }
@@ -19,43 +42,68 @@ export class CanvasRenderer implements IRenderer {
   /** Last frame's draw-call count (updated each second). Only meaningful in DEV builds. */
   get drawCallsLastFrame(): number { return this._drawCallsLast }
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, options: CanvasRendererOptions = {}) {
     this.canvas = canvas
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('CanvasRenderer: failed to get 2D context')
     this.ctx = ctx
+
+    this.logicalWidth  = options.resolution?.width  ?? LOGICAL_WIDTH
+    this.logicalHeight = options.resolution?.height ?? LOGICAL_HEIGHT
+
+    const scaling     = options.scaling ?? { mode: 'integer' }
+    this.scaleMode    = scaling.mode
+    this.fixedScale   = scaling.mode === 'fixed' ? scaling.scale : 1
+    this._scaleFilter = scaling.filter ?? 'pixelated'
+
     this.setupScaling()
     window.addEventListener('resize', () => this.setupScaling())
   }
 
   private setupScaling(): void {
     // Round DPR to nearest integer so all math stays clean (1.5 → 2, 1.25 → 1, etc.)
-    const dpr    = Math.max(1, Math.round(window.devicePixelRatio ?? 1))
-    const scaleX = window.innerWidth  / this.logicalWidth
-    const scaleY = window.innerHeight / this.logicalHeight
+    const dpr  = Math.max(1, Math.round(window.devicePixelRatio ?? 1))
+    const winW = window.innerWidth
+    const winH = window.innerHeight
+    const lw   = this.logicalWidth
+    const lh   = this.logicalHeight
 
-    // Integer CSS scale: snaps to the largest whole multiple that fits the window.
-    // This prevents sub-pixel CSS interpolation artifacts on pixel art.
-    const cssScale   = Math.max(1, Math.floor(Math.min(scaleX, scaleY)))
+    // Determine the CSS display size (in CSS pixels) from the scaling mode.
+    let cssW: number
+    let cssH: number
+    if (this.scaleMode === 'stretch') {
+      // Fill both axes, ignoring aspect ratio (may distort). Buffer stays logical.
+      cssW = winW
+      cssH = winH
+    } else {
+      let s: number
+      if (this.scaleMode === 'integer') {
+        // Largest whole-number multiple that fits — crispest pixel art.
+        s = Math.max(1, Math.floor(Math.min(winW / lw, winH / lh)))
+      } else if (this.scaleMode === 'fit') {
+        // Largest fractional scale preserving aspect ratio.
+        s = Math.max(0.01, Math.min(winW / lw, winH / lh))
+      } else {
+        // 'fixed' — exactly `scale ×` the logical size, regardless of window.
+        s = this.fixedScale
+      }
+      cssW = lw * s
+      cssH = lh * s
+    }
 
-    // Physical scale: combine CSS integer scale with device pixel ratio.
-    // Guarantees every logical pixel maps to exactly (cssScale × dpr)² physical pixels.
-    const pixelScale = cssScale * dpr
+    // Physical pixel buffer matches the CSS size × DPR for crisp HiDPI output.
+    const bufW = Math.max(1, Math.round(cssW * dpr))
+    const bufH = Math.max(1, Math.round(cssH * dpr))
 
-    // CSS display size — centred by flex layout in style.css
-    const cssW = this.logicalWidth  * cssScale
-    const cssH = this.logicalHeight * cssScale
-
-    // Canvas pixel buffer at full physical resolution for crisp HiDPI rendering
-    this.canvas.width  = this.logicalWidth  * pixelScale
-    this.canvas.height = this.logicalHeight * pixelScale
+    this.canvas.width  = bufW
+    this.canvas.height = bufH
     this.canvas.style.width  = `${cssW}px`
     this.canvas.style.height = `${cssH}px`
-    this.canvas.style.imageRendering = 'pixelated'
+    this.applyScaleFilter()
 
-    // Bake the pixel scale into the context transform.
-    // All draw calls use logical coordinates (0–320, 0–180); this handles the upscale.
-    this.ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0)
+    // Map logical coordinates onto the physical buffer. For uniform modes scaleX
+    // equals scaleY; 'stretch' produces independent per-axis scales.
+    this.ctx.setTransform(bufW / lw, 0, 0, bufH / lh, 0, 0)
     this.ctx.imageSmoothingEnabled = false
   }
 
@@ -129,14 +177,42 @@ export class CanvasRenderer implements IRenderer {
     this.ctx.imageSmoothingEnabled = false
   }
 
+  pushClip(rect: IRect): void {
+    this.ctx.save()
+    this.ctx.beginPath()
+    this.ctx.rect(rect.x, rect.y, rect.width, rect.height)
+    this.ctx.clip()
+  }
+
+  popClip(): void {
+    this.ctx.restore()
+    // restore() resets imageSmoothingEnabled to the saved value — keep it off
+    this.ctx.imageSmoothingEnabled = false
+  }
+
   setImageSmoothing(enabled: boolean): void {
     this._imageSmoothing = enabled
     this.ctx.imageSmoothingEnabled = enabled
-    this.canvas.style.imageRendering = enabled ? 'auto' : 'pixelated'
+    // The browser upscale filter (canvas.style.imageRendering) is owned separately
+    // by scaleFilter / setScaleFilter, so it survives frames and is not reset here.
   }
 
   /** Change ctx.imageSmoothingEnabled for one draw call only. Does not touch CSS. */
   setDrawSmoothing(enabled: boolean): void {
     this.ctx.imageSmoothingEnabled = enabled
+  }
+
+  setScaleFilter(filter: ScaleFilter): void {
+    this._scaleFilter = filter
+    this.applyScaleFilter()
+  }
+
+  toggleScaleFilter(): void {
+    this.setScaleFilter(this._scaleFilter === 'smooth' ? 'pixelated' : 'smooth')
+  }
+
+  /** Apply the current browser upscale filter to the canvas element. */
+  private applyScaleFilter(): void {
+    this.canvas.style.imageRendering = this._scaleFilter === 'smooth' ? 'auto' : 'pixelated'
   }
 }

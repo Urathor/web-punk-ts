@@ -36,7 +36,7 @@ A lightweight 2D canvas game framework for TypeScript, inspired by the classic [
 
 WebPunk.ts is a fixed-resolution, entity-component canvas game framework. Key characteristics:
 
-- **Logical resolution:** 320 × 240 pixels, scaled up to fill the window at any screen size
+- **Logical resolution:** configurable on the renderer (default 320 × 240), scaled up to fill the window — integer, fit, stretch, or fixed
 - **Fixed timestep:** physics/logic run at 60 Hz; rendering interpolates between steps
 - **Scene stack:** push, pop, and replace scenes — pause menus, transitions, and overlays are first-class
 - **Entity/Component:** entities own components; components implement logic and rendering
@@ -138,6 +138,33 @@ engine.actions.defineAction('confirm',    [{ type: 'key', code: 'Enter'      }])
 engine.actions.defineAction('cancel',     [{ type: 'key', code: 'Escape'     }])
 
 await engine.start(new TitleScene())
+```
+
+### Choosing a resolution & scaling mode
+
+`new CanvasRenderer(canvas)` defaults to a 320 × 240 logical resolution, integer-scaled and pixelated. Pass options to change the target look:
+
+```typescript
+const renderer = new CanvasRenderer(canvas, {
+  resolution: { width: 384, height: 216 },     // your target look (16:9)
+  scaling:    { mode: 'fit', filter: 'pixelated' },
+})
+```
+
+| `scaling.mode` | Behavior |
+|---|---|
+| `integer` (default) | Largest whole-number multiple that fits — crispest pixel art |
+| `fit` | Largest fractional scale preserving aspect ratio |
+| `stretch` | Fills both axes, ignoring aspect ratio (may distort) |
+| `fixed` | Exactly `scale ×` the logical size: `{ mode: 'fixed', scale: 3 }` |
+
+`scaling.filter` sets the browser upscale filter: `'pixelated'` (default, crisp) or `'smooth'` (bilinear, a faux-CRT blur). It is runtime-toggleable via `renderer.toggleScaleFilter()`. Everything else in your game keeps working in logical pixels regardless of the resolution you choose.
+
+The bundled demo (`games/demo`) keeps the default resolution and toggles the upscale filter live on the **P** key — the whole screen blurs to a faux-CRT look:
+
+```typescript
+// in a scene's update()
+if (engine.input.isKeyPressed('KeyP')) engine.renderer.toggleScaleFilter()
 ```
 
 ### `src/events.d.ts` — custom event types
@@ -445,9 +472,12 @@ import { FollowController } from '@engine/camera'
 | `removeLayer(name)` | Remove a layer by name |
 | `clearLayers()` | Remove all layers |
 | `position: Vector2` | Camera world position (top-left corner) |
+| `viewport: { x, y, width, height }` | Sub-rectangle of the logical screen the **world** renders into. Defaults to the full screen (set from the renderer's resolution). Shrink it to reserve margins for UI or create in-canvas letterbox bars. |
 | `controller` | Assign an `ICameraController` for automatic movement |
 
 Layer `order` values: lower numbers render first (behind). Use negative values for backgrounds.
+
+When `viewport` is smaller than the logical screen, world layers are clipped and offset into it while UI layers still draw across the full screen ("UI in the margins"); the margins show the `clear()` colour. Mouse→world conversions should subtract `viewport.{x, y}` when you use a non-default viewport.
 
 #### `FollowController`
 
@@ -483,7 +513,16 @@ import { CanvasRenderer } from '@engine/renderer'
 import type { IRenderer, TextStyle } from '@engine/renderer'
 ```
 
-All coordinates and sizes are in **logical pixels** (320 × 240 space). The renderer scales to the physical canvas automatically.
+#### `new CanvasRenderer(canvas, options?)`
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `resolution` | `{ width, height }` | `{ 320, 240 }` | Logical render resolution |
+| `scaling` | `ScalingOptions` | `{ mode: 'integer' }` | Browser scaling strategy + upscale `filter` |
+
+`ScalingOptions` = `{ mode: 'integer' \| 'fit' \| 'stretch' } | { mode: 'fixed'; scale: number }`, each optionally with `filter: 'pixelated' \| 'smooth'` (default `'pixelated'`). See [Choosing a resolution & scaling mode](#choosing-a-resolution--scaling-mode).
+
+All coordinates and sizes are in **logical pixels** (your configured resolution, default 320 × 240). The renderer scales to the physical canvas automatically.
 
 | Method | Description |
 |---|---|
@@ -494,7 +533,12 @@ All coordinates and sizes are in **logical pixels** (320 × 240 space). The rend
 | `drawText(text, position, style)` | Draw text. `style: { color, size, font?, align? }` — `align` is `'left'` \| `'center'` \| `'right'`, defaults to `'left'`. Pass `x: cx` with `align: 'center'` to anchor text to the screen centre. |
 | `pushTransform(x, y, scaleX?, scaleY?)` | Save state and apply offset/scale |
 | `popTransform()` | Restore previous transform state |
-| `logicalWidth / logicalHeight` | Always 320 / 240 |
+| `pushClip(rect)` / `popClip()` | Clip subsequent drawing to a logical-pixel rect (used by the camera viewport) |
+| `setImageSmoothing(enabled)` | In-canvas sprite smoothing (`ctx.imageSmoothingEnabled`); does not touch the browser filter |
+| `setDrawSmoothing(enabled)` | Toggle sprite smoothing for a single draw call |
+| `scaleFilter` | Current browser upscale filter: `'pixelated'` \| `'smooth'` |
+| `setScaleFilter(filter)` / `toggleScaleFilter()` | Set/toggle the browser upscale filter (`canvas.style.imageRendering`); persists across frames — `'smooth'` is a faux-CRT blur |
+| `logicalWidth / logicalHeight` | The configured logical resolution (default 320 / 240) |
 
 ---
 

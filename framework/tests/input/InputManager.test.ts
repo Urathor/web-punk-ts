@@ -1,4 +1,5 @@
 import { InputManager } from '@engine/input'
+import { MockRenderer } from '../mocks/MockRenderer'
 
 function makeCanvas(): HTMLCanvasElement {
   const c = document.createElement('canvas')
@@ -13,7 +14,7 @@ function makeCanvas(): HTMLCanvasElement {
 describe('InputManager', () => {
   let input: InputManager
 
-  beforeEach(() => { input = new InputManager(makeCanvas()) })
+  beforeEach(() => { input = new InputManager(makeCanvas(), new MockRenderer()) })
   afterEach(()  => { input.dispose() })
 
   describe('keyboard state machine', () => {

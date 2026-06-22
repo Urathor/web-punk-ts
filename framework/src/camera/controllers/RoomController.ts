@@ -2,7 +2,6 @@ import type { ICameraController             } from '../ICameraController'
 import type { Camera                        } from '../Camera'
 import type { Entity                        } from '@engine/entities'
 import { Transform                          } from '@engine/entities/components/Transform'
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT      } from '@engine/constants'
 
 /** Defines a rectangular room in world pixels. */
 export interface Room {
@@ -72,8 +71,8 @@ export class RoomController implements ICameraController {
           this._currentIndex = i
           this._panFromX     = camera.position.x
           this._panFromY     = camera.position.y
-          this._panToX       = this._centreX(r)
-          this._panToY       = this._centreY(r)
+          this._panToX       = this._centreX(r, camera)
+          this._panToY       = this._centreY(r, camera)
           this._panProgress  = 0
           break
         }
@@ -90,8 +89,8 @@ export class RoomController implements ICameraController {
       // Hold camera centred on current room
       const r = this._rooms[this._currentIndex]
       if (r) {
-        camera.position.x = this._centreX(r)
-        camera.position.y = this._centreY(r)
+        camera.position.x = this._centreX(r, camera)
+        camera.position.y = this._centreY(r, camera)
       }
     }
   }
@@ -106,16 +105,16 @@ export class RoomController implements ICameraController {
     this._panProgress  = 1
     const r = this._rooms[index]
     if (!r) return
-    camera.position.x = this._centreX(r)
-    camera.position.y = this._centreY(r)
+    camera.position.x = this._centreX(r, camera)
+    camera.position.y = this._centreY(r, camera)
   }
 
-  private _centreX(r: Room): number {
-    return r.x + r.width  / 2 - LOGICAL_WIDTH  / 2
+  private _centreX(r: Room, camera: Camera): number {
+    return r.x + r.width  / 2 - camera.viewport.width  / 2
   }
 
-  private _centreY(r: Room): number {
-    return r.y + r.height / 2 - LOGICAL_HEIGHT / 2
+  private _centreY(r: Room, camera: Camera): number {
+    return r.y + r.height / 2 - camera.viewport.height / 2
   }
 
   private _easeInOut(t: number): number {

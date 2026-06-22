@@ -2,7 +2,6 @@ import type { ICameraController }             from '../ICameraController'
 import type { Camera }                        from '../Camera'
 import { Transform }                          from '@engine/entities/components/Transform'
 import type { Entity }                        from '@engine/entities'
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT }      from '@engine/constants'
 
 export interface FollowControllerOptions {
   /** Lerp factor per frame normalised to 16.67 ms. 0 = instant snap. Clamped 0–1. */
@@ -36,8 +35,8 @@ export class FollowController implements ICameraController {
     if (!transform) return
 
     const targetPos = transform.worldPosition
-    const halfW     = LOGICAL_WIDTH  / 2
-    const halfH     = LOGICAL_HEIGHT / 2
+    const halfW     = camera.viewport.width  / 2
+    const halfH     = camera.viewport.height / 2
 
     const camCentreX = camera.position.x + halfW
     const camCentreY = camera.position.y + halfH
@@ -69,8 +68,8 @@ export class FollowController implements ICameraController {
 
     // Clamp to map bounds
     if (this.mapBounds) {
-      camera.position.x = Math.max(0, Math.min(camera.position.x, this.mapBounds.width  - LOGICAL_WIDTH))
-      camera.position.y = Math.max(0, Math.min(camera.position.y, this.mapBounds.height - LOGICAL_HEIGHT))
+      camera.position.x = Math.max(0, Math.min(camera.position.x, this.mapBounds.width  - camera.viewport.width))
+      camera.position.y = Math.max(0, Math.min(camera.position.y, this.mapBounds.height - camera.viewport.height))
     }
   }
 }

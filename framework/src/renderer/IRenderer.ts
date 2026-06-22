@@ -14,6 +14,9 @@ export interface TextStyle {
   align?: 'left' | 'center' | 'right'
 }
 
+/** Browser upscale filter applied to `canvas.style.imageRendering`. */
+export type ScaleFilter = 'pixelated' | 'smooth'
+
 export interface IRenderer {
   readonly logicalWidth:  number
   readonly logicalHeight: number
@@ -44,6 +47,15 @@ export interface IRenderer {
   popTransform(): void
 
   /**
+   * Clip subsequent drawing to a rectangle, in logical pixels. Used to confine
+   * world rendering to a camera viewport. Must be balanced with popClip().
+   */
+  pushClip(rect: IRect): void
+
+  /** Remove the last pushed clip region. */
+  popClip(): void
+
+  /**
    * Current global image-smoothing state.
    * Set once per frame by the camera; read by renderer components to decide
    * whether to apply smoothing on their draw call.
@@ -51,8 +63,9 @@ export interface IRenderer {
   readonly imageSmoothing: boolean
 
   /**
-   * Set the global image-smoothing state and the canvas CSS upscaling filter.
+   * Set the global in-canvas sprite smoothing state (ctx.imageSmoothingEnabled).
    * Call this once per frame (e.g. from Camera.render); do NOT call per draw call.
+   * Does NOT change the browser upscale filter — see {@link setScaleFilter}.
    */
   setImageSmoothing(enabled: boolean): void
 
@@ -62,4 +75,16 @@ export interface IRenderer {
    * Ignored by drawRect, drawLine, and drawText.
    */
   setDrawSmoothing(enabled: boolean): void
+
+  /**
+   * Current browser upscale filter (maps to `canvas.style.imageRendering`).
+   * 'pixelated' = crisp nearest-neighbour; 'smooth' = bilinear (faux-CRT look).
+   */
+  readonly scaleFilter: ScaleFilter
+
+  /** Set the browser upscale filter. Persists across frames and window resizes. */
+  setScaleFilter(filter: ScaleFilter): void
+
+  /** Toggle the browser upscale filter between 'pixelated' and 'smooth'. */
+  toggleScaleFilter(): void
 }

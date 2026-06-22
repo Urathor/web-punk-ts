@@ -11,7 +11,7 @@ import { Camera             } from '@engine/camera'
 import { CollisionSystem    } from '@engine/collision'
 import { BoxCollider        } from '@engine/collision'
 import { AudioManager       } from '@engine/audio'
-import { UIManager          } from '@engine/ui'
+import { UIManager, setAnchorCanvasSize } from '@engine/ui'
 import { EventEmitter       } from '@engine/events'
 import type { GameEventMap  } from '@engine/events'
 import { SaveManager        } from '@engine/save'
@@ -48,9 +48,12 @@ export class Engine implements IEngine {
     this.debug        = config.debug ?? false
     this.sceneManager = new SceneManager()
     this.assets       = new AssetLoader()
-    this.input        = new InputManager(config.canvas)
+    this.input        = new InputManager(config.canvas, this.renderer)
     this.actions      = new ActionMap(this.input)
     this.camera       = new Camera()
+    this.camera.viewport.width  = this.renderer.logicalWidth
+    this.camera.viewport.height = this.renderer.logicalHeight
+    setAnchorCanvasSize(this.renderer.logicalWidth, this.renderer.logicalHeight)
     this.collision    = new CollisionSystem()
     this.audio        = new AudioManager()
     this.ui           = new UIManager()

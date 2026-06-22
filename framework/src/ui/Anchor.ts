@@ -7,11 +7,27 @@ export const enum Anchor {
   BottomLeft,  BottomCenter, BottomRight
 }
 
+// Current logical canvas size used to resolve anchors when explicit dimensions
+// are not supplied. Starts at the default logical resolution and is updated by
+// the Engine from the renderer's logical size (see setAnchorCanvasSize).
+let defaultWidth  = LOGICAL_WIDTH
+let defaultHeight = LOGICAL_HEIGHT
+
+/**
+ * Set the logical canvas size used by {@link resolveAnchor} when it is called
+ * without explicit dimensions. The Engine calls this once with the renderer's
+ * logical resolution so UI anchored via the defaults follows a custom resolution.
+ */
+export function setAnchorCanvasSize(width: number, height: number): void {
+  defaultWidth  = width
+  defaultHeight = height
+}
+
 /** Returns the anchor point in logical pixels for the given canvas dimensions. */
 export function resolveAnchor(
   anchor:        Anchor,
-  canvasWidth  = LOGICAL_WIDTH,
-  canvasHeight = LOGICAL_HEIGHT
+  canvasWidth  = defaultWidth,
+  canvasHeight = defaultHeight
 ): Vector2 {
   const cx = canvasWidth  / 2
   const cy = canvasHeight / 2

@@ -1,7 +1,7 @@
 export { UIManager             } from './UIManager'
 export { UICanvas              } from './UICanvas'
 export { UIElement             } from './UIElement'
-export { Anchor, resolveAnchor } from './Anchor'
+export { Anchor, resolveAnchor, setAnchorCanvasSize } from './Anchor'
 export { BitmapFont            } from './BitmapFont'
 export type { BitmapFontData   } from './BitmapFont'
 export * from './widgets'
