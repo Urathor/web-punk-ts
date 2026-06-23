@@ -1,13 +1,24 @@
 import type { IRenderer } from '@engine/renderer'
 import { UICanvas        } from './UICanvas'
+import type { UITheme    } from './UITheme'
 
 export class UIManager {
   private canvases: UICanvas[] = []
 
+  /** Global default theme. Canvases without an explicit theme inherit it. */
+  theme: UITheme | null = null
+
   add(canvas: UICanvas): UICanvas {
     this.canvases.push(canvas)
     this.canvases.sort((a, b) => a.sortOrder - b.sortOrder)
+    if (this.theme) canvas.inheritTheme(this.theme)
     return canvas
+  }
+
+  /** Set the global default theme; propagates to canvases with no explicit theme. */
+  setTheme(theme: UITheme | null): void {
+    this.theme = theme
+    for (const canvas of this.canvases) canvas.inheritTheme(theme)
   }
 
   get(name: string): UICanvas | undefined {

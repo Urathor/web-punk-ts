@@ -1,7 +1,8 @@
-import { UIElement           } from '../UIElement'
-import type { IRenderer      } from '@engine/renderer'
-import type { BitmapFont     } from '../BitmapFont'
-import type { InputManager   } from '@engine/input'
+import { UIElement              } from '../UIElement'
+import type { IRenderer         } from '@engine/renderer'
+import type { BitmapFont        } from '../BitmapFont'
+import type { UIBackground, Tint } from '../backgrounds'
+import type { InputManager      } from '@engine/input'
 
 export interface ButtonColors {
   fill:   string
@@ -17,6 +18,13 @@ export class UIButton extends UIElement {
   normal:  ButtonColors = { fill: '#334466', border: '#6688aa', text: '#ffffff' }
   hover:   ButtonColors = { fill: '#4455aa', border: '#88aadd', text: '#ffffff' }
   pressed: ButtonColors = { fill: '#223355', border: '#446688', text: '#cccccc' }
+
+  /** Optional per-state sprite/colour backgrounds. Missing states fall back to
+   *  {@link UIElement.background} drawn with the matching state tint. */
+  hoverBackground:   UIBackground | null = null
+  pressedBackground: UIBackground | null = null
+  hoverTint:   Tint = { color: '#ffffff', strength: 0.15 }
+  pressedTint: Tint = { color: '#000000', strength: 0.20 }
 
   onClick?: () => void
 
@@ -50,8 +58,24 @@ export class UIButton extends UIElement {
                  : this.normal
 
     const bounds = this.getBounds()
-    renderer.drawRect(bounds, colors.fill,   true)
-    renderer.drawRect(bounds, colors.border, false)
+
+    // Sprite/colour background path (state-aware). Falls through to ButtonColors when
+    // no background is assigned, so the existing look is preserved.
+    const stateBg = this._isPressed ? this.pressedBackground
+                  : this._isHovered ? this.hoverBackground
+                  : this.background
+    const bg = stateBg ?? this.background
+    if (bg) {
+      // Tint only when the state had no explicit background and we fell back to base.
+      const tint = stateBg            ? undefined
+                 : this._isPressed    ? this.pressedTint
+                 : this._isHovered    ? this.hoverTint
+                 : undefined
+      bg.draw(renderer, bounds, tint)
+    } else {
+      renderer.drawRect(bounds, colors.fill,   true)
+      renderer.drawRect(bounds, colors.border, false)
+    }
 
     if (this.label) {
       const pos = this.getPosition()

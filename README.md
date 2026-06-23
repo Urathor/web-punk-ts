@@ -535,7 +535,7 @@ All coordinates and sizes are in **logical pixels** (your configured resolution,
 
 #### Runtime scale filter
 
-The `games/demo` game in this repo (a reference game, not bundled with the framework — only `template/` is) constructs the renderer at the default resolution and toggles the upscale filter live on the **P** key, blurring the whole screen to a faux-CRT look:
+Construct the renderer at any resolution, then toggle the upscale filter live — e.g. on the **P** key inside a scene's `update()` — to blur the whole screen to a faux-CRT look:
 
 ```typescript
 const renderer = new CanvasRenderer(canvasEl)
@@ -747,8 +747,10 @@ const clips  = await loader.load('/animations/player-animations.json')
 import {
   UIManager, UICanvas, UIElement, Anchor, BitmapFont,
   UIText, UIPanel, UIProgressBar, UIButton, UIImage, UIGrid,
+  // Sprite skins & theming:
+  UITheme, nineSlice, solid,
 } from '@engine/ui'
-2222```
+```
 
 UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed via `engine.ui`. All coordinates and sizes are in logical pixels.
 
@@ -795,6 +797,8 @@ The base `UIElement` class provides these shared members:
 | `height` | Element height in logical pixels |
 | `visible` | Show or hide this element |
 | `sortOrder` | Render order within the canvas (lower renders first) |
+| `background` | `UIBackground \| null` — sprite/colour background strategy; `null` uses the widget's own colour fields. Set by a `UITheme` or directly (an explicit value always wins). |
+| `themed` | When `false`, a `UITheme` will not assign a background to this element |
 | `getPosition()` | Compute top-left position: `anchor + offset` |
 | `getBounds()` | Get bounding `Rect` in logical pixels |
 | `render(renderer, interpolation)` | Abstract — each widget implements this |
@@ -926,49 +930,113 @@ const font2 = new BitmapFont({
 Assign a `BitmapFont` to a `UIText` (or `UIButton` / `UIGrid`) through its
 `bitmapFont` property to use it in place of the default canvas font.
 
-#### Example: building a HUD
+#### Sprite skins & theming
 
-This is the HUD from the `games/demo` project — a health bar, coin counter and hint
-label assembled in a scene's `onEnter`. `addElement` returns the widget, so each one
-is configured immediately after it is added:
+Every background-bearing widget can render a **sprite (nine-slice) background** instead
+of a flat rectangle, via a pluggable `UIBackground` strategy. When no background is set,
+the widget uses its colour fields exactly as before — the colour look is always the
+fallback, so existing UIs keep working unchanged.
 
 ```typescript
-import { UICanvas, UIText, UIProgressBar, Anchor } from '@engine/ui'
+import { nineSlice, solid, UITheme } from '@engine/ui'
+
+// A nine-patch from a sprite (zero insets = a plain stretched sprite):
+panel.background = nineSlice(sheet.sprite(0, 0), { left: 4, top: 4, right: 4, bottom: 4 })
+
+// Or the explicit colour strategy (the default look):
+panel.background = solid({ fill: '#223044', border: '#48597a' })
+```
+
+**Themes.** A `UITheme` assigns backgrounds (plus a default `BitmapFont` and colour
+tokens) to widgets by kind. Set one globally on the `UIManager`, or per `UICanvas`:
+
+```typescript
+// Procedural built-in skin — no art assets required:
+engine.ui.setTheme(UITheme.createDefault())                       // global default
+engine.ui.setTheme(UITheme.createDefault({ accent: '#e0a030', radius: 4 }))
+
+// Or load a real atlas (skin.json names regions, insets, font and colours):
+engine.ui.setTheme(await UITheme.load('/ui/skin.json', engine.assets))
+
+hudCanvas.setTheme(myOtherTheme)                                  // per-canvas override
+```
+
+Themes are applied when a widget is added (`canvas.addElement`) and re-applied to
+existing children by `setTheme`.
+
+**Precedence (the fallback guarantee):** an explicit `widget.background` you set wins
+over a per-canvas theme, which wins over the global manager theme, which wins over the
+widget's own colour fields. Opt a widget out of theming with `widget.themed = false`, or
+force the colour look with `widget.background = solid({ … })`.
+
+**Buttons** support per-state backgrounds (`hoverBackground` / `pressedBackground`); when
+a state has none, the base background is drawn with a `hoverTint` / `pressedTint` (lighten
+/ darken). **Progress bars** take a `trackBackground` + `fillBackground` with
+`fillMode: 'stretch' | 'crop'`. **`UIImage`** can be drawn as a nine-slice by setting its
+`insets`.
+
+**Pixel-art vs HD.** Set `UITheme.smoothing` (default `false`, crisp), applied once per
+canvas render. Sprite tints are pre-baked to a cached offscreen canvas, so tinting adds
+no per-frame cost.
+
+#### Example: building a HUD
+
+This is the themed HUD from the template's `GameScene` — a panel, label, health bar
+and an interactive button, centred on screen. `addElement` returns the widget, so each
+one is configured immediately after it is added. Applying `UITheme.createDefault()`
+gives every widget a nine-slice sprite background; delete the `setTheme` call and the
+same widgets fall back to their colour fields:
+
+```typescript
+import { UICanvas, UIPanel, UIText, UIProgressBar, UIButton, UITheme, Anchor, solid } from '@engine/ui'
 import { Vector2 } from '@engine/math'
 import type { IEngine } from '@engine/engine/IEngine'
 
-function buildHud(engine: IEngine): { healthBar: UIProgressBar; coinText: UIText } {
-  const hud = engine.ui.add(new UICanvas('hud', 0))   // name, sortOrder
+function buildHud(engine: IEngine): void {
+  engine.ui.setTheme(UITheme.createDefault())
+  const hud = engine.ui.add(new UICanvas('demo-hud', 100))   // name, sortOrder
 
-  const hpLabel  = hud.addElement(new UIText())
-  hpLabel.text   = 'HP'
-  hpLabel.anchor = Anchor.TopLeft
-  hpLabel.offset = new Vector2(4, 6)
-  hpLabel.color  = '#cccccc'
+  // Themed container panel (nine-slice background supplied by the theme).
+  const panel  = hud.addElement(new UIPanel())
+  panel.anchor = Anchor.Center
+  panel.offset = new Vector2(-75, -35)
+  panel.width  = 150
+  panel.height = 70
 
-  const healthBar           = hud.addElement(new UIProgressBar())
-  healthBar.anchor          = Anchor.TopLeft
-  healthBar.offset          = new Vector2(16, 4)
-  healthBar.width           = 56
-  healthBar.height          = 8
-  healthBar.fillColor       = '#cc3333'
-  healthBar.backgroundColor = '#441111'
-  healthBar.value           = 1.0
+  const title  = hud.addElement(new UIText())
+  title.anchor = Anchor.Center
+  title.text   = 'Themed HUD'
+  title.offset = new Vector2(-67, -28)
 
-  const coinText  = hud.addElement(new UIText())
-  coinText.text   = 'Coins: 0'
-  coinText.anchor = Anchor.TopRight
-  coinText.offset = new Vector2(-52, 6)
-  coinText.color  = '#ffdd44'
+  // Themed progress bar (sprite track + fill come from the theme).
+  const health  = hud.addElement(new UIProgressBar())
+  health.anchor = Anchor.Center
+  health.offset = new Vector2(-67, -13)
+  health.width  = 122
+  health.height = 9
+  health.value  = 0.6
 
-  return { healthBar, coinText }
+  // Interactive themed button — hover/press reuse the theme's state tints.
+  const heal   = hud.addElement(new UIButton(engine.input))
+  heal.anchor  = Anchor.Center
+  heal.label   = 'Heal +10%'
+  heal.offset  = new Vector2(-67, 3)
+  heal.width   = 78
+  heal.height  = 16
+  heal.onClick = () => { health.value = Math.min(1, health.value + 0.1) }
+
+  // Explicit background overrides the theme — this swatch keeps the flat colour
+  // look even while a theme is active (precedence: explicit > theme > colours).
+  const swatch      = hud.addElement(new UIPanel())
+  swatch.anchor     = Anchor.Center
+  swatch.offset     = new Vector2(19, 3)
+  swatch.width      = 36
+  swatch.height     = 16
+  swatch.background = solid({ fill: '#2e7d46', border: '#8be0a4' })
 }
 
-// Update widgets as game state changes:
-//   healthBar.value = player.health / player.maxHealth
-//   coinText.text   = `Coins: ${count}`
-//
-// All canvases are cleared automatically when the scene exits (engine.ui.clear()).
+// Canvases are removed automatically when the scene exits (engine.ui.clear()),
+// or explicitly via engine.ui.remove('demo-hud').
 ```
 
 ---

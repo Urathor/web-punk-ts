@@ -1,5 +1,6 @@
 import { Anchor, resolveAnchor } from './Anchor'
 import type { IRenderer        } from '@engine/renderer'
+import type { UIBackground     } from './backgrounds'
 import { Vector2, Rect         } from '@engine/math'
 
 export abstract class UIElement {
@@ -9,6 +10,16 @@ export abstract class UIElement {
   height:    number  = 0
   visible:   boolean = true
   sortOrder: number  = 0
+
+  /**
+   * Optional sprite/colour background strategy. When `null`, the widget renders with
+   * its own colour fields (the default look). Assigned by a `UITheme` or set directly;
+   * an explicit value always wins over the theme.
+   */
+  background: UIBackground | null = null
+
+  /** When `false`, a `UITheme` will not assign a background to this element. */
+  themed: boolean = true
 
   /** Top-left position in logical pixels, derived from anchor + offset. */
   getPosition(): Vector2 {

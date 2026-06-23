@@ -2,6 +2,7 @@ import { UIElement           } from '../UIElement'
 import type { IRenderer      } from '@engine/renderer'
 import type { BitmapFont     } from '../BitmapFont'
 import type { Sprite         } from '@engine/animation/Sprite'
+import type { UIBackground   } from '../backgrounds'
 import { Rect                } from '@engine/math'
 
 export interface GridCell {
@@ -19,9 +20,14 @@ export class UIGrid extends UIElement {
   /** Gap between cells in logical pixels. */
   padding:  number = 2
 
-  cellBackground: string = '#1a1a2e'
-  cellBorder:     string = '#444466'
-  selectedColor:  string = '#8899ff'
+  cellBackgroundColor: string = '#1a1a2e'
+  cellBorderColor:     string = '#444466'
+  selectedColor:       string = '#8899ff'
+
+  /** Optional nine-slice/colour background drawn per cell (overrides the colours). */
+  cellBackground:     UIBackground | null = null
+  /** Optional highlight drawn over selected cells. */
+  selectedBackground: UIBackground | null = null
 
   bitmapFont: BitmapFont | null = null
 
@@ -62,8 +68,16 @@ export class UIGrid extends UIElement {
         const cellY  = origin.y + this.padding + r * (this.cellSize + this.padding)
         const bounds = new Rect(cellX, cellY, this.cellSize, this.cellSize)
 
-        renderer.drawRect(bounds, this.cellBackground, true)
-        renderer.drawRect(bounds, cell?.selected ? this.selectedColor : this.cellBorder, false)
+        if (this.cellBackground) {
+          this.cellBackground.draw(renderer, bounds)
+          if (cell?.selected) {
+            if (this.selectedBackground) this.selectedBackground.draw(renderer, bounds)
+            else                         renderer.drawRect(bounds, this.selectedColor, false)
+          }
+        } else {
+          renderer.drawRect(bounds, this.cellBackgroundColor, true)
+          renderer.drawRect(bounds, cell?.selected ? this.selectedColor : this.cellBorderColor, false)
+        }
 
         if (cell?.sprite) {
           const iconPad  = 1

@@ -12,6 +12,10 @@ export class UIPanel extends UIElement {
 
   render(renderer: IRenderer, _interpolation: number): void {
     const bounds = this.getBounds()
+    if (this.background) {
+      this.background.draw(renderer, bounds)
+      return
+    }
     if (this.showFill)   renderer.drawRect(bounds, this.fillColor,   true)
     if (this.showBorder) renderer.drawRect(bounds, this.borderColor, false)
   }

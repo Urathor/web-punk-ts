@@ -1,6 +1,8 @@
 import type { IScene    } from '@engine/engine/IScene'
 import type { IEngine   } from '@engine/engine/IEngine'
 import type { IRenderer } from '@engine/renderer'
+import { UICanvas, UIPanel, UIProgressBar, UIText, UIButton, UITheme, Anchor, solid } from '@engine/ui'
+import { Vector2 } from '@engine/math'
 
 /**
  * Main gameplay scene stub.
@@ -15,10 +17,61 @@ export class GameScene implements IScene {
     engine.camera.controller = null
     engine.events.clear()
     // TODO: preload assets, spawn entities, set up camera layers
+
+    // --- Sprite UI theme demo (optional; safe to delete) ---------------------
+    // Applies the built-in procedural skin so widgets render with nine-slice
+    // sprite backgrounds instead of flat rectangles. Every widget below still
+    // works without the theme — it just falls back to its colour fields.
+    // Delete this block (and the engine.ui.remove call in onExit) to opt out.
+    engine.ui.setTheme(UITheme.createDefault())
+    const hud = engine.ui.add(new UICanvas('demo-hud', 100))
+
+    // The cluster is anchored to screen centre. Each widget anchors to
+    // Anchor.Center; its offset positions it relative to that point, so the
+    // 150×70 panel is centred by offsetting it by half its size.
+    // Themed container panel (nine-slice background supplied by the theme).
+    const panel  = hud.addElement(new UIPanel())
+    panel.anchor = Anchor.Center
+    panel.offset = new Vector2(-75, -35)
+    panel.width  = 150
+    panel.height = 70
+
+    const title  = hud.addElement(new UIText())
+    title.anchor = Anchor.Center
+    title.text   = 'Themed HUD'
+    title.offset = new Vector2(-67, -28)
+
+    // Themed progress bar (sprite track + fill come from the theme).
+    const health  = hud.addElement(new UIProgressBar())
+    health.anchor = Anchor.Center
+    health.offset = new Vector2(-67, -13)
+    health.width  = 122
+    health.height = 9
+    health.value  = 0.6
+
+    // Interactive themed button — hover/press reuse the theme's state tints.
+    const heal   = hud.addElement(new UIButton(engine.input))
+    heal.anchor  = Anchor.Center
+    heal.label   = 'Heal +10%'
+    heal.offset  = new Vector2(-67, 3)
+    heal.width   = 78
+    heal.height  = 16
+    heal.onClick = () => { health.value = Math.min(1, health.value + 0.1) }
+
+    // Explicit background overrides the theme (precedence demo): this swatch
+    // keeps the flat-rectangle colour look even while a theme is active.
+    const swatch      = hud.addElement(new UIPanel())
+    swatch.anchor     = Anchor.Center
+    swatch.offset     = new Vector2(19, 3)
+    swatch.width      = 36
+    swatch.height     = 16
+    swatch.background = solid({ fill: '#2e7d46', border: '#8be0a4' })
+    // -------------------------------------------------------------------------
   }
 
   onExit(): void {
     const engine = this._engine
+    engine.ui.remove('demo-hud')
     engine.events.clear()
     engine.camera.clearLayers()
     engine.camera.controller = null
@@ -39,11 +92,10 @@ export class GameScene implements IScene {
   }
 
   render(renderer: IRenderer, _ip: number): void {
-    const cx = renderer.logicalWidth  / 2
-    const cy = renderer.logicalHeight / 2
+    const cx = renderer.logicalWidth / 2
     renderer.drawText(
       'GameScene — your game goes here!',
-      { x: cx - 104, y: cy - 4 },
+      { x: cx - 104, y: renderer.logicalHeight - 14 },
       { color: '#aaaaaa', size: 7 }
     )
   }
