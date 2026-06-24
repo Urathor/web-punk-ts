@@ -1,8 +1,5 @@
-import type { IScene    } from '@engine/engine/IScene'
-import type { IEngine   } from '@engine/engine/IEngine'
-import type { IRenderer } from '@engine/renderer'
-import { FadeScene       } from '@engine/engine'
-import { Tween, Easing   } from '@engine/tween'
+import type { IScene, IEngine, IRenderer } from 'webpunk.ts'
+import { FadeScene, Tween, Easing         } from 'webpunk.ts'
 
 export class TitleScene implements IScene {
   private _engine!:    IEngine

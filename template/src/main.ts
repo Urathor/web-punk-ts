@@ -1,6 +1,5 @@
-import { CanvasRenderer } from '@engine/renderer'
-import { Engine          } from '@engine/engine'
-import { TitleScene      } from './scenes/TitleScene'
+import { CanvasRenderer, Engine } from 'webpunk.ts'
+import { TitleScene             } from './scenes/TitleScene'
 
 const canvasEl = document.getElementById('game-canvas')
 if (!(canvasEl instanceof HTMLCanvasElement)) {

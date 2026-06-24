@@ -4,18 +4,48 @@
   "type": "module",
   "description": "A Canvas game framework in the spirit of FlashPunk — for web and desktop (Tauri).",
   "license": "MIT",
-  "files": [
-    "src",
-    "tsconfig.consumer.json"
-  ],
-  "exports": {
-    "./package.json": "./package.json",
-    "./src/*":        "./src/*"
+  "author": "Tim Mallory (https://github.com/Urathor)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Urathor/web-punk-ts.git",
+    "directory": "framework"
   },
+  "bugs": {
+    "url": "https://github.com/Urathor/web-punk-ts/issues"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "keywords": [
+    "game-engine",
+    "game-development",
+    "canvas",
+    "typescript",
+    "2d",
+    "flashpunk",
+    "retro",
+    "gamedev",
+    "tauri"
+  ],
   "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build:lib": "vite build -c vite.lib.config.ts",
+    "build": "npm run build:lib",
+    "prepack": "npm run build:lib",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
@@ -25,6 +55,7 @@
     "jsdom": "^29.1.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
+    "vite-plugin-dts": "^5.0.2",
     "vitest": "^3.2.6"
   }
 }

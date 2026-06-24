@@ -9,7 +9,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "webpunk.ts": "file:../framework"
+    "webpunk.ts": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

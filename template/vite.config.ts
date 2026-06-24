@@ -1,31 +1,33 @@
-import { defineConfig }    from 'vite'
+import { defineConfig }     from 'vite'
 import { resolve, dirname } from 'path'
 import { fileURLToPath }    from 'url'
 import { existsSync }       from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// Resolve engine src: check all three possible locations in priority order.
-// When deployed outside this workspace:
-//   1. Change the dependency in package.json to the published package URL, e.g.
-//      "@tb/game-fw": "github:your-org/game-fw" or "@tb/game-fw": "^0.1.0"
-//   2. Run `npm install` — the first path below is picked up automatically.
-const engineSrc =
-  existsSync(resolve(__dirname, 'node_modules/webpunk.ts/src'))
-    ? resolve(__dirname, 'node_modules/webpunk.ts/src')                   // standalone install
-    : existsSync(resolve(__dirname, '../node_modules/webpunk.ts/src'))
-      ? resolve(__dirname, '../node_modules/webpunk.ts/src')              // npm workspace (hoisted)
-      : resolve(__dirname, '../framework/src')                             // repo sibling
+// In this monorepo, alias the bare `webpunk.ts` import (and the framework's
+// internal `@engine/*` imports) to the framework SOURCE, so live framework
+// edits hot-reload without rebuilding the package. In a scaffolded project
+// these paths do not exist, so Vite resolves the installed `webpunk.ts`
+// package (its compiled dist) normally — no alias, nothing to configure.
+const frameworkSrc   = resolve(__dirname, '../framework/src')
+const devEngineAlias = existsSync(frameworkSrc)
+  ? {
+      'webpunk.ts': resolve(frameworkSrc, 'index.ts'),
+      '@engine':    frameworkSrc,
+    }
+  : {}
 
 export default defineConfig({
   publicDir: 'public',
   resolve: {
-    alias: { '@engine': engineSrc }
+    alias: { ...devEngineAlias },
   },
   server: {
-    fs: { allow: ['..'] }
+    fs: { allow: ['..'] },
   },
   build: {
-    target: 'es2022'
-  }
+    target: 'es2022',
+  },
 })
+

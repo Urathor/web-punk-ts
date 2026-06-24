@@ -1,0 +1,6 @@
+# Intentionally minimal.
+#
+# The "files" allowlist in package.json controls what gets published (index.mjs +
+# template). This file exists so npm does NOT fall back to .gitignore — which
+# ignores the generated template/ folder and would otherwise omit it from the
+# published tarball.

@@ -1,7 +1,9 @@
 import { Vector2                    } from '@engine/math'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
 
-export const enum Anchor {
+// NOTE: a plain `enum` (not `const enum`) so the published .d.ts is safe to
+// consume under `isolatedModules` / `verbatimModuleSyntax`.
+export enum Anchor {
   TopLeft,     TopCenter,    TopRight,
   MiddleLeft,  Center,       MiddleRight,
   BottomLeft,  BottomCenter, BottomRight

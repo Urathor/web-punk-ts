@@ -1,9 +1,9 @@
 // Extend the framework's GameEventMap with game-specific events.
 // Uncomment and add your events here.
 //
-// import '@engine/events/GameEvents'
+// import 'webpunk.ts'
 //
-// declare module '@engine/events/GameEvents' {
+// declare module 'webpunk.ts' {
 //   interface GameEventMap {
 //     'player:scored': { points: number }
 //     'level:complete': Record<string, never>

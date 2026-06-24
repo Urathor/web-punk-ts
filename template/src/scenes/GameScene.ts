@@ -1,8 +1,5 @@
-import type { IScene    } from '@engine/engine/IScene'
-import type { IEngine   } from '@engine/engine/IEngine'
-import type { IRenderer } from '@engine/renderer'
-import { UICanvas, UIPanel, UIProgressBar, UIText, UIButton, UITheme, Anchor, solid } from '@engine/ui'
-import { Vector2 } from '@engine/math'
+import type { IScene, IEngine, IRenderer } from 'webpunk.ts'
+import { UICanvas, UIPanel, UIProgressBar, UIText, UIButton, UITheme, Anchor, solid, Vector2 } from 'webpunk.ts'
 
 /**
  * Main gameplay scene stub.
