@@ -17,4 +17,13 @@ engine.actions.defineAction('move-down',  [{ type: 'key', code: 'ArrowDown'  }, 
 engine.actions.defineAction('confirm',    [{ type: 'key', code: 'Enter' }, { type: 'key', code: 'Space' }])
 engine.actions.defineAction('cancel',     [{ type: 'key', code: 'Escape' }])
 
+// Load the default UI font (Science Gothic). Text falls back to sans-serif if
+// it's unavailable, so a failed load never blocks startup. Swap the family/path
+// here, or call engine.assets.loadGoogleFonts(...) to pull a font from Google.
+try {
+  await engine.assets.loadFont('Science Gothic', '/fonts/ScienceGothic.ttf')
+} catch {
+  /* font missing — widgets render with the sans-serif fallback */
+}
+
 await engine.start(new TitleScene())

@@ -48,48 +48,71 @@ WebPunk.ts is a fixed-resolution, entity-component canvas game framework. Key ch
 
 ## Setting Up a New Game
 
-### 1. Copy the template
+WebPunk.ts ships as the npm package [`webpunk.ts`](https://www.npmjs.com/package/webpunk.ts)
+(compiled JavaScript + type declarations). Scaffold a ready-to-run game with one
+command, or add the engine to an existing project.
 
-The `template/` folder in this repo is the starting point for any new game. Copy it to a new location and rename it.
+### Option A — Scaffold a new game (recommended)
+
+The companion [`create-webpunk`](https://www.npmjs.com/package/create-webpunk)
+initializer generates a Vite + TypeScript project that already depends on
+`webpunk.ts`, with a title scene, a gameplay scene stub, input actions, and the
+default UI font wired up:
+
+```bash
+npm create webpunk@latest my-game
+# or, equivalently:
+npx create-webpunk my-game
+```
+
+Then install and run:
+
+```bash
+cd my-game
+npm install
+npm run dev
+```
+
+The generated project looks like:
 
 ```
-template/
+my-game/
 ├── index.html
-├── package.json
+├── package.json          ← depends on "webpunk.ts"
 ├── tsconfig.json
 ├── vite.config.ts
 ├── public/
-│   └── css/
-│       └── style.css
+│   ├── css/style.css
+│   └── fonts/            ← default UI font (Science Gothic)
 └── src/
-    ├── main.ts          ← engine bootstrap + action bindings
-    ├── constants.ts     ← game-specific constants (gravity, speeds, etc.)
-    ├── events.d.ts      ← typed custom event declarations
+    ├── main.ts           ← engine bootstrap + action bindings + font load
+    ├── constants.ts      ← game-specific constants (gravity, speeds, etc.)
+    ├── events.d.ts       ← typed custom event declarations
     └── scenes/
-        └── TitleScene.ts
+        ├── TitleScene.ts
+        └── GameScene.ts
 ```
 
-### 2. Install dependencies
+### Option B — Add the engine to an existing project
 
 ```bash
-npm install
+npm install webpunk.ts
 ```
 
-The template's `package.json` references the framework via a `file:` path pointing at the `framework/` folder in this repo. If you install the package from GitHub instead, change the dependency:
-
-```json
-"webpunk.ts": "github:your-username/web-punk-ts"
+```ts
+import { Engine, CanvasRenderer } from 'webpunk.ts'
 ```
 
-then run `npm install` again.
+Everything in the API reference below is imported by name from the single
+`webpunk.ts` package entry — there is no path alias to configure.
 
-### 3. Start the dev server
+### Start the dev server
 
 ```bash
 npm run dev
 ```
 
-### 4. Build for distribution
+### Build for distribution
 
 ```bash
 npm run build
@@ -123,9 +146,8 @@ your-game/
 ### `src/main.ts` — entry point pattern
 
 ```typescript
-import { CanvasRenderer } from '@engine/renderer'
-import { Engine          } from '@engine/engine'
-import { TitleScene      } from './scenes/TitleScene'
+import { CanvasRenderer, Engine } from 'webpunk.ts'
+import { TitleScene             } from './scenes/TitleScene'
 
 const canvas   = document.getElementById('game-canvas') as HTMLCanvasElement
 const renderer = new CanvasRenderer(canvas)
@@ -136,6 +158,12 @@ engine.actions.defineAction('move-left',  [{ type: 'key', code: 'ArrowLeft'  }, 
 engine.actions.defineAction('jump',       [{ type: 'key', code: 'Space'      }])
 engine.actions.defineAction('confirm',    [{ type: 'key', code: 'Enter'      }])
 engine.actions.defineAction('cancel',     [{ type: 'key', code: 'Escape'     }])
+
+// Register the default UI font before the first frame (optional). Text falls back
+// to a web-safe sans-serif if the load fails, so it never blocks startup.
+try {
+  await engine.assets.loadFont('Science Gothic', '/fonts/ScienceGothic.ttf')
+} catch { /* font missing — widgets use the sans-serif fallback */ }
 
 await engine.start(new TitleScene())
 ```
@@ -165,9 +193,9 @@ const renderer = new CanvasRenderer(canvas, {
 Augment the framework's `GameEventMap` to add game-specific typed events:
 
 ```typescript
-import '@engine/events/GameEvents'
+import 'webpunk.ts'
 
-declare module '@engine/events/GameEvents' {
+declare module 'webpunk.ts' {
   interface GameEventMap {
     'player:died':    Record<string, never>
     'coin:collected': { value: number }
@@ -203,13 +231,11 @@ engine.popScene()                     // resume previous scene
 Create game objects by subclassing `Entity` and adding components in the constructor:
 
 ```typescript
-import { Entity         } from '@engine/entities'
-import { Transform      } from '@engine/entities/components/Transform'
-import { SpriteRenderer } from '@engine/entities/components/SpriteRenderer'
-import { BoxCollider, CollisionLayer } from '@engine/collision'
-import { SpriteSheet    } from '@engine/animation'
-import { Vector2        } from '@engine/math'
-import type { Texture   } from '@engine/assets/Texture'
+import {
+  Entity, Transform, SpriteRenderer,
+  BoxCollider, CollisionLayer, SpriteSheet, Vector2,
+} from 'webpunk.ts'
+import type { Texture } from 'webpunk.ts'
 
 class Player extends Entity {
   readonly collider: BoxCollider
@@ -263,15 +289,15 @@ onExit(): void {
 
 ## API Reference
 
-All imports use the `@engine` path alias, which is configured in `vite.config.ts` and `tsconfig.json`.
+All public API is imported by name from the `webpunk.ts` package entry — e.g. `import { Engine, Vector2 } from 'webpunk.ts'`.
 
 ---
 
 ### Engine
 
 ```typescript
-import { Engine     } from '@engine/engine'
-import type { IEngine } from '@engine/engine/IEngine'
+import { Engine } from 'webpunk.ts'
+import type { IEngine } from 'webpunk.ts'
 ```
 
 #### `new Engine(config)`
@@ -313,8 +339,7 @@ engine.replaceSceneUnder(scene)   // replace the scene below the current one
 ### Scene
 
 ```typescript
-import type { IScene  } from '@engine/engine/IScene'
-import type { IEngine } from '@engine/engine/IEngine'
+import type { IScene, IEngine } from 'webpunk.ts'
 ```
 
 Implement `IScene` on every scene class:
@@ -343,7 +368,7 @@ export class MyScene implements IScene {
 Push a `FadeScene` on top of the stack to cross-fade between two scenes. It fades to black over `halfDurationMs`, fires `onMidpoint` (swap the scene below), then fades back.
 
 ```typescript
-import { FadeScene } from '@engine/engine'
+import { FadeScene } from 'webpunk.ts'
 
 // In a scene's update():
 engine.pushScene(new FadeScene(300, (eng) => {
@@ -360,12 +385,9 @@ engine.pushScene(new FadeScene(300, (eng) => {
 ### Entity & Components
 
 ```typescript
-import { Entity         } from '@engine/entities'
-import { Transform      } from '@engine/entities/components/Transform'
-import { SpriteRenderer } from '@engine/entities/components/SpriteRenderer'
-import { Animator       } from '@engine/entities/components/Animator'
-import { HealthComponent} from '@engine/entities/components/HealthComponent'
-import { BaseComponent  } from '@engine/entities/BaseComponent'
+import {
+  Entity, Transform, SpriteRenderer, Animator, HealthComponent, BaseComponent,
+} from 'webpunk.ts'
 ```
 
 #### `Entity`
@@ -434,7 +456,7 @@ hp.isDead     // hp <= 0
 #### Custom components
 
 ```typescript
-import { BaseComponent } from '@engine/entities/BaseComponent'
+import { BaseComponent } from 'webpunk.ts'
 
 class GravityComponent extends BaseComponent {
   velocityY = 0
@@ -452,8 +474,7 @@ class GravityComponent extends BaseComponent {
 ### Camera & Layers
 
 ```typescript
-import { Camera          } from '@engine/camera'
-import { FollowController } from '@engine/camera'
+import { Camera, FollowController } from 'webpunk.ts'
 ```
 
 #### `Camera`
@@ -502,8 +523,8 @@ class ShakeController implements ICameraController {
 ### Renderer
 
 ```typescript
-import { CanvasRenderer } from '@engine/renderer'
-import type { IRenderer, TextStyle } from '@engine/renderer'
+import { CanvasRenderer } from 'webpunk.ts'
+import type { IRenderer, TextStyle } from 'webpunk.ts'
 ```
 
 #### `new CanvasRenderer(canvas, options?)`
@@ -522,6 +543,7 @@ All coordinates and sizes are in **logical pixels** (your configured resolution,
 | `clear(color?)` | Fill the canvas. Defaults to black. |
 | `drawImage(image, srcRect, dstRect)` | Draw a sprite or canvas region |
 | `drawRect(rect, color, fill?)` | Draw a filled (default) or outlined rectangle |
+| `drawCircle(center, radius, color, fill?)` | Draw a filled (default) or outlined circle |
 | `drawLine(from, to, color, lineWidth?)` | Draw a line |
 | `drawText(text, position, style)` | Draw text. `style: { color, size, font?, align? }` — `align` is `'left'` \| `'center'` \| `'right'`, defaults to `'left'`. Pass `x: cx` with `align: 'center'` to anchor text to the screen centre. |
 | `pushTransform(x, y, scaleX?, scaleY?)` | Save state and apply offset/scale |
@@ -549,8 +571,7 @@ if (engine.input.isKeyPressed('KeyP')) engine.renderer.toggleScaleFilter()
 ### Input
 
 ```typescript
-import { ActionMap    } from '@engine/input'
-import { InputManager } from '@engine/input'
+import { ActionMap, InputManager } from 'webpunk.ts'
 ```
 
 #### `ActionMap` (preferred)
@@ -586,10 +607,7 @@ engine.input.isMousePressed(0)         // left button
 ### Collision
 
 ```typescript
-import { BoxCollider    } from '@engine/collision'
-import { CircleCollider } from '@engine/collision'
-import { CollisionFace  } from '@engine/collision'
-import { CollisionLayer } from '@engine/collision'
+import { BoxCollider, CircleCollider, CollisionFace, CollisionLayer } from 'webpunk.ts'
 ```
 
 #### `BoxCollider`
@@ -645,9 +663,8 @@ if (face === CollisionFace.Bottom) {
 ### Tilemap
 
 ```typescript
-import { TiledJsonLoader } from '@engine/tilemap'
-import { TileMapRenderer } from '@engine/tilemap'
-import type { TileMap    } from '@engine/tilemap/TileMap'
+import { TiledJsonLoader, TileMapRenderer } from 'webpunk.ts'
+import type { TileMap } from 'webpunk.ts'
 ```
 
 #### Loading a map
@@ -704,10 +721,8 @@ for (const obj of objLayer?.objects ?? []) {
 ### Animation
 
 ```typescript
-import { SpriteSheet        } from '@engine/animation'
-import { AnimationClipLoader } from '@engine/animation'
-import type { AnimationClip  } from '@engine/animation'
-import type { Sprite         } from '@engine/animation'
+import { SpriteSheet, AnimationClipLoader } from 'webpunk.ts'
+import type { AnimationClip, Sprite } from 'webpunk.ts'
 ```
 
 #### `SpriteSheet`
@@ -749,7 +764,7 @@ import {
   UIText, UIPanel, UIProgressBar, UIButton, UIImage, UIGrid,
   // Sprite skins & theming:
   UITheme, nineSlice, solid,
-} from '@engine/ui'
+} from 'webpunk.ts'
 ```
 
 UI elements are screen-space (overlay) widgets managed by `UIManager`, accessed via `engine.ui`. All coordinates and sizes are in logical pixels.
@@ -809,8 +824,8 @@ The framework ships with ready-made widgets (below), so you rarely subclass
 `UIElement` directly. When you do need a bespoke widget, implement `render`:
 
 ```typescript
-import { UIElement } from '@engine/ui'
-import type { IRenderer } from '@engine/renderer'
+import { UIElement } from 'webpunk.ts'
+import type { IRenderer } from 'webpunk.ts'
 
 class Crosshair extends UIElement {
   render(renderer: IRenderer): void {
@@ -823,7 +838,7 @@ class Crosshair extends UIElement {
 
 #### Built-in widgets
 
-Import any of these from `@engine/ui` and add them with `canvas.addElement(...)`,
+Import any of these from `webpunk.ts` and add them with `canvas.addElement(...)`,
 which returns the element so you can configure it inline.
 
 **`UIText`** — a line of text.
@@ -833,6 +848,7 @@ which returns the element so you can configure it inline.
 | `text` | The string to draw |
 | `color` | CSS colour (default `'#ffffff'`) |
 | `fontSize` | Size in logical pixels when no `bitmapFont` is set (default `8`) |
+| `font` | CSS font family used when no `bitmapFont` is set (default `DEFAULT_FONT_FAMILY` — Science Gothic, sans-serif) |
 | `bitmapFont` | Optional `BitmapFont` for pixel text |
 | `fontScale` | Scale applied when using a `bitmapFont` |
 
@@ -862,19 +878,22 @@ which returns the element so you can configure it inline.
 | `label` | Button text |
 | `onClick` | Callback fired on release inside the button |
 | `normal` / `hover` / `pressed` | `ButtonColors` (`{ fill, border, text }`) per state |
+| `textColor` | Overrides every state's text colour when set (default `null` = use the per-state `text`) |
+| `font` | CSS font family for the label when no `bitmapFont` is set (default `DEFAULT_FONT_FAMILY`) |
 | `bitmapFont` / `fontSize` | Text-rendering options |
 
 **`UIImage`** — draws a `Sprite`. Set `sprite`, plus optional `width` / `height` to scale.
 
 **`UIGrid`** — a grid of cells (inventory, hotbar). Configure `columns`, `rows`,
 `cellSize`, and `padding`; fill cells with `setCell(row, col, { sprite, quantity, selected })`.
+The quantity badge renders with `font`, `fontSize`, and `textColor` (or a `bitmapFont` when set).
 
 #### `Anchor`
 
 Position UI elements relative to the **configured logical resolution** (320 × 240 by default):
 
 ```typescript
-import { Anchor } from '@engine/ui'
+import { Anchor } from 'webpunk.ts'
 
 element.anchor = Anchor.TopLeft        // default
 element.anchor = Anchor.TopCenter
@@ -894,7 +913,7 @@ with your resolution — for the default 320 × 240:
 
 The Engine sets the anchor reference size to the renderer's logical resolution
 automatically. To resolve anchors yourself outside the Engine, call
-`setAnchorCanvasSize(width, height)` (exported from `@engine/ui`) first.
+`setAnchorCanvasSize(width, height)` (exported from `webpunk.ts`) first.
 
 Use a negative `offset` to inset from the right/bottom edges — e.g. `Anchor.TopRight`
 with `offset = new Vector2(-52, 6)` sits just inside the top-right corner.
@@ -905,7 +924,7 @@ Render crisp pixel text from a sprite sheet. Load from a JSON descriptor, or bui
 one directly from a loaded texture:
 
 ```typescript
-import { BitmapFont } from '@engine/ui'
+import { BitmapFont } from 'webpunk.ts'
 
 // JSON descriptor fields: { texture, charWidth, charHeight, chars, charsPerRow }
 const font = await BitmapFont.load('/fonts/default.json', engine.assets)
@@ -938,7 +957,7 @@ the widget uses its colour fields exactly as before — the colour look is alway
 fallback, so existing UIs keep working unchanged.
 
 ```typescript
-import { nineSlice, solid, UITheme } from '@engine/ui'
+import { nineSlice, solid, UITheme } from 'webpunk.ts'
 
 // A nine-patch from a sprite (zero insets = a plain stretched sprite):
 panel.background = nineSlice(sheet.sprite(0, 0), { left: 4, top: 4, right: 4, bottom: 4 })
@@ -947,22 +966,36 @@ panel.background = nineSlice(sheet.sprite(0, 0), { left: 4, top: 4, right: 4, bo
 panel.background = solid({ fill: '#223044', border: '#48597a' })
 ```
 
-**Themes.** A `UITheme` assigns backgrounds (plus a default `BitmapFont` and colour
-tokens) to widgets by kind. Set one globally on the `UIManager`, or per `UICanvas`:
+**Themes.** A `UITheme` assigns backgrounds **and** text styling — colour tokens
+(`colors.text` / `border` / `fill`) plus a `fontFamily` and an optional default
+`BitmapFont` — to widgets by kind. Set one globally on the `UIManager`, or per `UICanvas`:
 
 ```typescript
 // Procedural built-in skin — no art assets required:
 engine.ui.setTheme(UITheme.createDefault())                       // global default
-engine.ui.setTheme(UITheme.createDefault({ accent: '#e0a030', radius: 4 }))
 
-// Or load a real atlas (skin.json names regions, insets, font and colours):
+// Customise the colour tokens, font and corner radius. `fill` / `border` / `accent`
+// are baked into the sprite backgrounds; `text` + `fontFamily` style every text widget:
+engine.ui.setTheme(UITheme.createDefault({
+  fill:       '#223044',
+  border:     '#48597a',
+  accent:     '#e0a030',
+  text:       '#ffe9c0',
+  fontFamily: '"Science Gothic", sans-serif',
+  radius:     4,
+}))
+
+// Or load a real atlas (skin.json names regions, insets, font, fontFamily and colours):
 engine.ui.setTheme(await UITheme.load('/ui/skin.json', engine.assets))
 
 hudCanvas.setTheme(myOtherTheme)                                  // per-canvas override
 ```
 
 Themes are applied when a widget is added (`canvas.addElement`) and re-applied to
-existing children by `setTheme`.
+existing children by `setTheme`. Applying a theme propagates `colors.text` to
+`UIText.color`, `UIButton.textColor` and `UIGrid.textColor`, and `fontFamily` to each
+widget's `font` — so changing the theme's colour/font tokens restyles the **text** too,
+not just the backgrounds.
 
 **Precedence (the fallback guarantee):** an explicit `widget.background` you set wins
 over a per-canvas theme, which wins over the global manager theme, which wins over the
@@ -988,9 +1021,10 @@ gives every widget a nine-slice sprite background; delete the `setTheme` call an
 same widgets fall back to their colour fields:
 
 ```typescript
-import { UICanvas, UIPanel, UIText, UIProgressBar, UIButton, UITheme, Anchor, solid } from '@engine/ui'
-import { Vector2 } from '@engine/math'
-import type { IEngine } from '@engine/engine/IEngine'
+import {
+  UICanvas, UIPanel, UIText, UIProgressBar, UIButton, UITheme, Anchor, solid, Vector2,
+} from 'webpunk.ts'
+import type { IEngine } from 'webpunk.ts'
 
 function buildHud(engine: IEngine): void {
   engine.ui.setTheme(UITheme.createDefault())
@@ -1044,7 +1078,7 @@ function buildHud(engine: IEngine): void {
 ### Audio
 
 ```typescript
-import { AudioManager } from '@engine/audio'
+import { AudioManager } from 'webpunk.ts'
 ```
 
 Accessed via `engine.audio`. Audio files must be loaded with `engine.assets.loadAudio()` first.
@@ -1067,7 +1101,7 @@ engine.audio.setBGMVolume(0.7)              // global BGM volume
 ### Assets
 
 ```typescript
-import { AssetLoader } from '@engine/assets'
+import { AssetLoader } from 'webpunk.ts'
 ```
 
 Accessed via `engine.assets`. Assets are served from the `public/` folder.
@@ -1085,12 +1119,36 @@ await engine.assets.preloadTextures(
 
 Assets are cached — loading the same path twice returns the cached value.
 
+#### Fonts
+
+Register custom fonts so the canvas renderer (and the UI text widgets) can use them.
+Call these once during startup, before the first frame — the canvas falls back to a
+web-safe family until a font is registered, so a failed load never blocks the game.
+
+```typescript
+// From a file in public/ (e.g. public/fonts/ScienceGothic.ttf):
+await engine.assets.loadFont('Science Gothic', '/fonts/ScienceGothic.ttf')
+
+// Optional FontFace descriptors (weight / style / unicode-range, etc.):
+await engine.assets.loadFont('My Font', '/fonts/MyFont.woff2', { weight: '700' })
+
+// …or pull one or more families from Google Fonts:
+await engine.assets.loadGoogleFonts('Press Start 2P')
+await engine.assets.loadGoogleFonts({ family: 'Inter', axis: 'wght@400;700' })
+```
+
+Once registered, use the family name anywhere a font is accepted — `renderer.drawText`,
+a `UIText`/`UIButton`/`UIGrid` `font` property, or a `UITheme`'s `fontFamily`. The
+framework's default theme uses **Science Gothic** with a `sans-serif` fallback
+(`DEFAULT_FONT_FAMILY`); scaffolded projects ship the font in `public/fonts/` and load
+it in `main.ts`. Font loading is a no-op in headless environments (no `FontFace`/`document.fonts`).
+
 ---
 
 ### Events
 
 ```typescript
-import { EventEmitter } from '@engine/events'
+import { EventEmitter } from 'webpunk.ts'
 ```
 
 Accessed via `engine.events`. Events are typed via `GameEventMap` (see `src/events.d.ts`).
@@ -1118,7 +1176,7 @@ Always call `off` or `clear` in `onExit` to prevent stale listeners.
 ### Save System
 
 ```typescript
-import { SaveManager } from '@engine/save'
+import { SaveManager } from 'webpunk.ts'
 ```
 
 Accessed via `engine.save`. Defaults to `localStorage`; swap the provider for IndexedDB, Tauri's filesystem, etc.
@@ -1146,8 +1204,7 @@ await engine.save.delete('player-data')
 ### Math
 
 ```typescript
-import { Vector2 } from '@engine/math'
-import { Rect    } from '@engine/math'
+import { Vector2, Rect } from 'webpunk.ts'
 ```
 
 #### `Vector2`
@@ -1190,7 +1247,7 @@ Rect.fromCenter({ x, y }, width, height)
 ## Constants
 
 ```typescript
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
+import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from 'webpunk.ts'
 // LOGICAL_WIDTH  = 320
 // LOGICAL_HEIGHT = 240
 ```
@@ -1202,8 +1259,8 @@ Game-specific constants (gravity, speeds, tile size, etc.) belong in your game's
 ## Tweens
 
 ```typescript
-import { Tween, Easing } from '@engine/tween'
-import type { EasingFn } from '@engine/tween'
+import { Tween, Easing } from 'webpunk.ts'
+import type { EasingFn } from 'webpunk.ts'
 ```
 
 Tweens interpolate a `number` from one value to another over a fixed duration. They are **manually ticked** — call `tween.tick(dt)` inside your scene or component's `update(dt)`.

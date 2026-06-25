@@ -1,6 +1,6 @@
 {
   "name": "webpunk.ts",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "A Canvas game framework in the spirit of FlashPunk — for web and desktop (Tauri).",
   "license": "MIT",

@@ -1,5 +1,5 @@
 import type { IRenderer, IPoint, IRect, TextStyle, ScaleFilter } from './IRenderer'
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
+import { LOGICAL_WIDTH, LOGICAL_HEIGHT, DEFAULT_FONT_FAMILY } from '@engine/constants'
 
 /** How the logical buffer is scaled to fill the browser window. */
 export type ScalingOptions =
@@ -164,6 +164,18 @@ export class CanvasRenderer implements IRenderer {
     }
   }
 
+  drawCircle(center: IPoint, radius: number, color: string, fill = true): void {
+    this.ctx.beginPath()
+    this.ctx.arc(center.x, center.y, radius, 0, Math.PI * 2)
+    if (fill) {
+      this.ctx.fillStyle = color
+      this.ctx.fill()
+    } else {
+      this.ctx.strokeStyle = color
+      this.ctx.stroke()
+    }
+  }
+
   drawLine(from: IPoint, to: IPoint, color: string, lineWidth = 1): void {
     this.ctx.strokeStyle = color
     this.ctx.lineWidth   = lineWidth
@@ -175,7 +187,7 @@ export class CanvasRenderer implements IRenderer {
 
   drawText(text: string, position: IPoint, style: TextStyle): void {
     this.ctx.fillStyle = style.color
-    this.ctx.font      = `${style.size}px ${style.font ?? 'monospace'}`
+    this.ctx.font      = `${style.size}px ${style.font ?? DEFAULT_FONT_FAMILY}`
     this.ctx.textAlign = style.align ?? 'left'
     this.ctx.fillText(text, position.x, position.y)
     this.ctx.textAlign = 'left'

@@ -20,7 +20,17 @@ export class GameScene implements IScene {
     // sprite backgrounds instead of flat rectangles. Every widget below still
     // works without the theme — it just falls back to its colour fields.
     // Delete this block (and the engine.ui.remove call in onExit) to opt out.
-    engine.ui.setTheme(UITheme.createDefault())
+    //
+    // Recolour the whole skin here: every button / panel / bar tile is derived
+    // from these few colours, so changing them restyles all widgets at once.
+    // Edit the values (or delete any key to keep its default) to suit your game.
+    engine.ui.setTheme(UITheme.createDefault({
+      fill:   '#223044',   // base panel & button fill
+      border: '#48597a',   // outlines / borders
+      accent: '#5a9bd8',   // progress fill + grid-selection highlight
+      text:   '#ffffff',   // label text colour
+      radius: 6,           // corner roundness in px
+    }))
     const hud = engine.ui.add(new UICanvas('demo-hud', 100))
 
     // The cluster is anchored to screen centre. Each widget anchors to

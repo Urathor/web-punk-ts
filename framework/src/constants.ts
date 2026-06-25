@@ -18,3 +18,12 @@ export const FIXED_STEP_MS  = 1000 / 60
 
 /** Max accumulated time before the fixed-update loop is capped (prevents spiral of death). */
 export const MAX_ACCUMULATOR_MS = FIXED_STEP_MS * 5
+
+/**
+ * Default CSS font family for canvas text and UI widgets. The framework ships
+ * "Science Gothic" as its default look; `sans-serif` is the web-safe fallback
+ * used until the font is registered (see `AssetLoader.loadFont`) and by any
+ * consumer that doesn't bundle it. Multi-word names are quoted so the string is
+ * a valid canvas `ctx.font` family list.
+ */
+export const DEFAULT_FONT_FAMILY = '"Science Gothic", sans-serif'

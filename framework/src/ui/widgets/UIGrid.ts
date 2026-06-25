@@ -4,6 +4,7 @@ import type { BitmapFont     } from '../BitmapFont'
 import type { Sprite         } from '@engine/animation/Sprite'
 import type { UIBackground   } from '../backgrounds'
 import { Rect                } from '@engine/math'
+import { DEFAULT_FONT_FAMILY } from '@engine/constants'
 
 export interface GridCell {
   sprite?:   Sprite
@@ -30,6 +31,10 @@ export class UIGrid extends UIElement {
   selectedBackground: UIBackground | null = null
 
   bitmapFont: BitmapFont | null = null
+  /** Quantity-badge text styling — used when no bitmapFont is set. */
+  font:      string = DEFAULT_FONT_FAMILY
+  fontSize:  number = 6
+  textColor: string = '#ffffff'
 
   private cells: GridCell[][] = []
 
@@ -89,14 +94,22 @@ export class UIGrid extends UIElement {
           renderer.drawImage(cell.sprite.texture.image, cell.sprite.srcRect, iconRect)
         }
 
-        if (cell?.quantity !== undefined && cell.quantity > 1 && this.bitmapFont) {
-          const qty     = cell.quantity.toString()
-          const m       = this.bitmapFont.measureString(qty)
-          this.bitmapFont.drawString(
-            renderer, qty,
-            cellX + this.cellSize - m.width  - 1,
-            cellY + this.cellSize - m.height - 1
-          )
+        if (cell?.quantity !== undefined && cell.quantity > 1) {
+          const qty = cell.quantity.toString()
+          if (this.bitmapFont) {
+            const m = this.bitmapFont.measureString(qty)
+            this.bitmapFont.drawString(
+              renderer, qty,
+              cellX + this.cellSize - m.width  - 1,
+              cellY + this.cellSize - m.height - 1
+            )
+          } else {
+            renderer.drawText(
+              qty,
+              { x: cellX + this.cellSize - 1, y: cellY + this.cellSize - 1 },
+              { color: this.textColor, size: this.fontSize, font: this.font, align: 'right' }
+            )
+          }
         }
       }
     }

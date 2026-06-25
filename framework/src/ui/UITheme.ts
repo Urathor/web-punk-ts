@@ -1,4 +1,5 @@
 import { Rect                  } from '@engine/math'
+import { DEFAULT_FONT_FAMILY    } from '@engine/constants'
 import type { AssetLoader      } from '@engine/assets'
 import { BitmapFont            } from './BitmapFont'
 import { blendHex              } from './tint'
@@ -31,6 +32,8 @@ export interface UIThemeData {
   smoothing?:     boolean
   /** Optional `BitmapFont` JSON descriptor path. */
   font?:          string
+  /** CSS font family for widgets' canvas-text fallback (when no BitmapFont). */
+  fontFamily?:    string
   colors?:        Partial<UIThemeColors>
   panel?:         UIThemeRegionData
   buttonNormal?:  UIThemeRegionData
@@ -43,13 +46,15 @@ export interface UIThemeData {
 }
 
 export interface UIThemeDefaultOptions {
-  fill?:      string
-  border?:    string
-  accent?:    string
-  text?:      string
+  fill?:       string
+  border?:     string
+  accent?:     string
+  text?:       string
+  /** CSS font family applied to widgets' canvas-text fallback. */
+  fontFamily?: string
   /** Corner radius of the procedural rounded-rect tiles, in pixels. */
-  radius?:    number
-  smoothing?: boolean
+  radius?:     number
+  smoothing?:  boolean
 }
 
 /**
@@ -61,6 +66,8 @@ export interface UIThemeDefaultOptions {
 export class UITheme {
   smoothing = false
   font: BitmapFont | null = null
+  /** CSS font family applied to text widgets' canvas-text fallback (when no BitmapFont). */
+  fontFamily = DEFAULT_FONT_FAMILY
   colors: UIThemeColors = { text: '#ffffff', border: '#8899aa', fill: '#223044' }
 
   panel:         UIBackground | null = null
@@ -92,6 +99,8 @@ export class UITheme {
         el.pressedTint       = this.buttonPressedTint
       }
       if (this.font && !el.bitmapFont) el.bitmapFont = this.font
+      el.font       = this.fontFamily
+      el.textColor ??= this.colors.text
       return
     }
 
@@ -106,8 +115,12 @@ export class UITheme {
     } else if (el instanceof UIGrid) {
       el.cellBackground     = this.gridCell
       el.selectedBackground = this.gridSelected
+      el.font      = this.fontFamily
+      el.textColor = this.colors.text
       if (this.font && !el.bitmapFont) el.bitmapFont = this.font
     } else if (el instanceof UIText) {
+      el.color = this.colors.text
+      el.font  = this.fontFamily
       if (this.font && !el.bitmapFont) el.bitmapFont = this.font
     }
   }
@@ -124,8 +137,9 @@ export class UITheme {
     const border = opts.border ?? '#48597a'
     const accent = opts.accent ?? '#5a9bd8'
     const text   = opts.text   ?? '#ffffff'
-    theme.smoothing = opts.smoothing ?? false
-    theme.colors    = { text, border, fill }
+    theme.smoothing  = opts.smoothing ?? false
+    theme.fontFamily = opts.fontFamily ?? DEFAULT_FONT_FAMILY
+    theme.colors     = { text, border, fill }
 
     const TILE   = 24
     const radius = Math.max(0, Math.min(TILE / 2 - 1, opts.radius ?? 6))
@@ -178,6 +192,7 @@ export class UITheme {
     const theme = new UITheme()
 
     if (data.smoothing !== undefined) theme.smoothing = data.smoothing
+    if (data.fontFamily) theme.fontFamily = data.fontFamily
     if (data.colors) {
       theme.colors = {
         text:   data.colors.text   ?? theme.colors.text,

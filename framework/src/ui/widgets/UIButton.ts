@@ -3,6 +3,7 @@ import type { IRenderer         } from '@engine/renderer'
 import type { BitmapFont        } from '../BitmapFont'
 import type { UIBackground, Tint } from '../backgrounds'
 import type { InputManager      } from '@engine/input'
+import { DEFAULT_FONT_FAMILY     } from '@engine/constants'
 
 export interface ButtonColors {
   fill:   string
@@ -14,6 +15,11 @@ export class UIButton extends UIElement {
   label:      string            = ''
   bitmapFont: BitmapFont | null = null
   fontSize:   number            = 8
+  /** CSS font family for the label — used when no bitmapFont is set. */
+  font:       string            = DEFAULT_FONT_FAMILY
+  /** Overrides the per-state {@link ButtonColors.text} for every state when set
+   *  (non-null). Used by the label's `drawText` fallback; ignored for bitmap fonts. */
+  textColor:  string | null     = null
 
   normal:  ButtonColors = { fill: '#334466', border: '#6688aa', text: '#ffffff' }
   hover:   ButtonColors = { fill: '#4455aa', border: '#88aadd', text: '#ffffff' }
@@ -87,8 +93,8 @@ export class UIButton extends UIElement {
       } else {
         renderer.drawText(
           this.label,
-          { x: pos.x + bounds.width / 2 - this.label.length * 3, y: pos.y + bounds.height / 2 + 3 },
-          { color: colors.text, size: this.fontSize }
+          { x: pos.x + bounds.width / 2, y: pos.y + bounds.height / 2 + this.fontSize * 0.375 },
+          { color: this.textColor ?? colors.text, size: this.fontSize, font: this.font, align: 'center' }
         )
       }
     }

@@ -8,7 +8,7 @@ export interface TextStyle {
   color:  string
   /** Font size in logical pixels. */
   size:   number
-  /** CSS font family string. Defaults to 'monospace'. */
+  /** CSS font family string. Defaults to {@link DEFAULT_FONT_FAMILY}. */
   font?:  string
   /** Horizontal alignment relative to the position x. Defaults to 'left'. */
   align?: 'left' | 'center' | 'right'
@@ -33,6 +33,9 @@ export interface IRenderer {
 
   /** Draw a filled or outlined rectangle. fill defaults to true. */
   drawRect(rect: IRect, color: string, fill?: boolean): void
+
+  /** Draw a filled or outlined circle. fill defaults to true. */
+  drawCircle(center: IPoint, radius: number, color: string, fill?: boolean): void
 
   /** Draw a line between two points. */
   drawLine(from: IPoint, to: IPoint, color: string, lineWidth?: number): void

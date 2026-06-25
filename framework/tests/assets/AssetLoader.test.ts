@@ -45,3 +45,37 @@ describe('AssetLoader', () => {
     expect(loader.getTexture('/foo.png')).toBe(t)
   })
 })
+
+describe('AssetLoader.loadFont', () => {
+  let originalFonts: PropertyDescriptor | undefined
+
+  beforeEach(() => { originalFonts = Object.getOwnPropertyDescriptor(document, 'fonts') })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    if (originalFonts) Object.defineProperty(document, 'fonts', originalFonts)
+    else delete (document as unknown as { fonts?: unknown }).fonts
+  })
+
+  it('registers a FontFace under the family and dedupes repeat loads', async () => {
+    class FakeFontFace {
+      constructor(public family: string, public source: string, public descriptors: unknown) {}
+      load() { return Promise.resolve(this) }
+    }
+    vi.stubGlobal('FontFace', FakeFontFace)
+    const addSpy = vi.fn()
+    Object.defineProperty(document, 'fonts', { value: { add: addSpy }, configurable: true })
+
+    const loader = new AssetLoader()
+    await loader.loadFont('Test Font', '/fonts/test.ttf')
+    await loader.loadFont('Test Font', '/fonts/test.ttf') // same family+url → no-op
+
+    expect(addSpy).toHaveBeenCalledTimes(1)
+    expect((addSpy.mock.calls[0]![0] as FakeFontFace).family).toBe('Test Font')
+  })
+
+  it('resolves without registering when no DOM font API is present', async () => {
+    vi.stubGlobal('FontFace', undefined)
+    const loader = new AssetLoader()
+    await expect(loader.loadFont('X', '/x.ttf')).resolves.toBeUndefined()
+  })
+})
