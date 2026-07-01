@@ -3,6 +3,11 @@
 Running release notes for **webpunk.ts** and the `create-webpunk` scaffolder.
 Newest entries first.
 
+## 0.2.3
+
+### Debug Overlay
+- **Build-Time Debug Overlay Fix** — fixed an issue where the debug overlay was completely missing in games built using the npm package, as well as when running with source aliases in a monorepo development server. Gating checks were transitioned to check both `import.meta.env.DEV` (for source-mapped dev builds) and a deferred `process.env.NODE_ENV !== 'production'` check. This ensures `DebugOverlay` is preserved in the library bundle but remains fully tree-shakable in the consumer's production build.
+
 ## 0.2.1
 
 ### Fonts

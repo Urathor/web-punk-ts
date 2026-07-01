@@ -1,17 +1,17 @@
 {
   "name": "create-webpunk",
-  "version": "0.2.1",
+  "version": "0.2.5",
   "description": "Scaffold a new webpunk.ts game project.",
   "type": "module",
   "license": "MIT",
-  "author": "Tim Mallory (https://github.com/Urathor)",
+  "author": "Tim Mallory (https://www.webpunkts.com/)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Urathor/web-punk-ts.git",
     "directory": "create-webpunk"
   },
   "bugs": {
-    "url": "https://github.com/Urathor/web-punk-ts/issues"
+    "url": "https://www.webpunkts.com/community"
   },
   "bin": {
     "create-webpunk": "index.mjs"
@@ -28,7 +28,6 @@
     "prepack": "npm run bundle:template"
   },
   "keywords": [
-    "webpunk",
     "create",
     "scaffold",
     "starter",

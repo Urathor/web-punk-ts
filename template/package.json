@@ -1,15 +1,15 @@
 {
   "name": "my-game",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.3",
   "type": "module",
   "scripts": {
-    "dev":   "vite",
+    "dev": "vite",
     "build": "tsc -b && vite build",
     "check": "tsc --noEmit"
   },
   "dependencies": {
-    "webpunk.ts": "^0.2.1"
+    "webpunk.ts": "^0.2.3"
   },
   "devDependencies": {
     "typescript": "^6.0.3",

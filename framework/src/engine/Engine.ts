@@ -18,6 +18,8 @@ import { SaveManager        } from '@engine/save'
 import { LocalStorageSaveProvider } from '@engine/save'
 import { DebugOverlay       } from '@engine/debug'
 
+const DEBUG_OVERLAY_ENABLED = process.env.NODE_ENV !== 'production'
+
 export class Engine implements IEngine {
   readonly renderer:     IRenderer
   readonly debug:        boolean
@@ -41,7 +43,7 @@ export class Engine implements IEngine {
 
   // Debug overlay — instantiated only in DEV builds; null in production.
   private readonly debugOverlay: DebugOverlay | null =
-    import.meta.env.DEV ? new DebugOverlay() : null
+    DEBUG_OVERLAY_ENABLED ? new DebugOverlay() : null
 
   constructor(config: EngineConfig) {
     this.renderer     = config.renderer
@@ -68,7 +70,7 @@ export class Engine implements IEngine {
     })
 
     // Wire event logging to the debug overlay
-    if (import.meta.env.DEV && this.debugOverlay) {
+    if (DEBUG_OVERLAY_ENABLED && this.debugOverlay) {
       this.events._emitHook = (e) => this.debugOverlay!.logEvent(e)
     }
   }
@@ -113,7 +115,7 @@ export class Engine implements IEngine {
     this.ui.update(dt)
     this.sceneManager.activeScene?.update(dt)
 
-    if (import.meta.env.DEV && this.debugOverlay) {
+    if (DEBUG_OVERLAY_ENABLED && this.debugOverlay) {
       if (this.input.isKeyPressed('Backquote')) this.debugOverlay.toggle()
 
       if (this.debugOverlay.visible && this.input.isMousePressed(0)) {
@@ -139,7 +141,7 @@ export class Engine implements IEngine {
     // UI renders last (always on top, no camera transform)
     this.ui.render(this.renderer, interpolation)
 
-    if (import.meta.env.DEV) {
+    if (DEBUG_OVERLAY_ENABLED) {
       if (this.debugOverlay) {
         const stats = {
           fps:           this._fps,

@@ -18,6 +18,8 @@ export interface CanvasRendererOptions {
   scaling?:    ScalingOptions
 }
 
+const DEBUG_OVERLAY_ENABLED = process.env.NODE_ENV !== 'production'
+
 export class CanvasRenderer implements IRenderer {
   readonly logicalWidth:  number
   readonly logicalHeight: number
@@ -126,7 +128,7 @@ export class CanvasRenderer implements IRenderer {
   }
 
   clear(color = '#000000'): void {
-    if (import.meta.env.DEV) {
+    if (DEBUG_OVERLAY_ENABLED) {
       // Treat clear() as a frame boundary — report last frame's draw-call count
       this._drawCallTimer += 16.67  // approximate; good enough for console logging
       if (this._drawCallTimer >= 1000) {
@@ -146,7 +148,7 @@ export class CanvasRenderer implements IRenderer {
     srcRect: IRect,
     dstRect: IRect
   ): void {
-    if (import.meta.env.DEV) { this._drawCalls++ }
+    if (DEBUG_OVERLAY_ENABLED) { this._drawCalls++ }
     this.ctx.drawImage(
       image,
       srcRect.x, srcRect.y, srcRect.width, srcRect.height,
