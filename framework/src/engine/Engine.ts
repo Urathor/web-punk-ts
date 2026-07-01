@@ -16,13 +16,14 @@ import { EventEmitter       } from '@engine/events'
 import type { GameEventMap  } from '@engine/events'
 import { SaveManager        } from '@engine/save'
 import { LocalStorageSaveProvider } from '@engine/save'
-import { DebugOverlay       } from '@engine/debug'
+import { DebugOverlay, Debugger } from '@engine/debug'
+import type { IDebugger } from '@engine/debug'
 
 const DEBUG_OVERLAY_ENABLED = process.env.NODE_ENV !== 'production'
 
 export class Engine implements IEngine {
   readonly renderer:     IRenderer
-  readonly debug:        boolean
+  readonly debugger:     IDebugger | null
   readonly sceneManager: SceneManager
   readonly assets:       AssetLoader
   readonly input:        InputManager
@@ -47,9 +48,10 @@ export class Engine implements IEngine {
 
   constructor(config: EngineConfig) {
     this.renderer     = config.renderer
-    this.debug        = config.debug ?? false
+    this.debugger     = DEBUG_OVERLAY_ENABLED ? new Debugger() : null
     this.sceneManager = new SceneManager()
     this.assets       = new AssetLoader()
+    this.assets.setDebugger(this.debugger)
     this.input        = new InputManager(config.canvas, this.renderer)
     this.actions      = new ActionMap(this.input)
     this.camera       = new Camera()
@@ -58,9 +60,11 @@ export class Engine implements IEngine {
     setAnchorCanvasSize(this.renderer.logicalWidth, this.renderer.logicalHeight)
     this.collision    = new CollisionSystem()
     this.audio        = new AudioManager()
+    this.audio.setDebugger(this.debugger)
     this.ui           = new UIManager()
     this.events       = new EventEmitter<GameEventMap>()
     this.save         = new SaveManager(config.saveProvider ?? new LocalStorageSaveProvider())
+    this.save.setDebugger(this.debugger)
     this.collision.setEventBus(this.events)
 
     this.loop = new GameLoop({
@@ -70,8 +74,16 @@ export class Engine implements IEngine {
     })
 
     // Wire event logging to the debug overlay
-    if (DEBUG_OVERLAY_ENABLED && this.debugOverlay) {
-      this.events._emitHook = (e) => this.debugOverlay!.logEvent(e)
+    if (DEBUG_OVERLAY_ENABLED && this.debugger) {
+      this.events._emitHook = (e) => (this.debugger as Debugger).logEvent(e)
+      
+      window.addEventListener('wheel', (e) => {
+        const dbg = this.debugger as Debugger
+        if (dbg.visible && dbg.expandedLog) {
+          const maxLines = Math.floor((this.renderer.logicalHeight / 2 - 12) / 8)
+          dbg.scrollLog(e.deltaY > 0 ? 1 : -1, maxLines)
+        }
+      }, { passive: true })
     }
   }
 
@@ -115,16 +127,22 @@ export class Engine implements IEngine {
     this.ui.update(dt)
     this.sceneManager.activeScene?.update(dt)
 
-    if (DEBUG_OVERLAY_ENABLED && this.debugOverlay) {
-      if (this.input.isKeyPressed('Backquote')) this.debugOverlay.toggle()
+    if (DEBUG_OVERLAY_ENABLED && this.debugger) {
+      const dbg = this.debugger as Debugger
+      if (this.input.isKeyPressed('Backquote')) dbg.toggle()
 
-      if (this.debugOverlay.visible && this.input.isMousePressed(0)) {
-        const worldMouse = this.input.mousePosition.add(this.camera.position)
-        for (const collider of this.collision.allColliders) {
-          if (collider instanceof BoxCollider && collider.getWorldBounds().contains(worldMouse)) {
-            this.debugOverlay.inspectEntity(collider.entity)
-            break
-          }
+      if (dbg.visible) {
+        if (this.input.isKeyPressed('KeyL')) {
+          dbg.toggleLogExpansion()
+        }
+        if (this.input.isMousePressed(0)) {
+          dbg.handleMouseClick(
+            this.input.mousePosition,
+            this.collision.allColliders,
+            this.camera,
+            this.renderer.logicalWidth,
+            this.renderer.logicalHeight
+          )
         }
       }
     }
@@ -142,21 +160,29 @@ export class Engine implements IEngine {
     this.ui.render(this.renderer, interpolation)
 
     if (DEBUG_OVERLAY_ENABLED) {
-      if (this.debugOverlay) {
+      const dbg = this.debugger as Debugger
+      if (dbg && dbg.visible && this.debugOverlay) {
         const stats = {
           fps:           this._fps,
           frameTimeMs:   this._lastFrameMs,
           colliderCount: this.collision.allColliders.length,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          drawCalls:     (this.renderer as any).drawCallsLastFrame ?? 0,
+          drawCalls:     (this.renderer as any).gameDrawCallsLastFrame ?? 0,
+          debugDrawCalls: (this.renderer as any).debugDrawCallsLastFrame ?? 0,
           sceneStack:    this.sceneManager.allScenes.map(s => s.constructor.name),
         }
-        this.debugOverlay.renderColliders(this.renderer, this.collision.allColliders, this.camera)
-        this.debugOverlay.render(this.renderer, stats)
-        this.debugOverlay.renderInspector(this.renderer)
-        this.debugOverlay.renderEventMonitor(this.renderer)
-        this.debugOverlay.renderInputState(this.renderer, this.input, this.actions)
-        this.debugOverlay.renderAudioState(this.renderer, this.audio)
+        if (this.renderer.setDebugMode) {
+          this.renderer.setDebugMode(true)
+        }
+        this.debugOverlay.renderColliders(this.renderer, this.collision.allColliders, this.camera, dbg)
+        this.debugOverlay.render(this.renderer, dbg, stats)
+        this.debugOverlay.renderInspector(this.renderer, dbg)
+        this.debugOverlay.renderEventMonitor(this.renderer, dbg)
+        this.debugOverlay.renderSystemPanel(this.renderer, dbg, this.input, this.audio)
+        this.debugOverlay.renderMessageLog(this.renderer, dbg)
+        if (this.renderer.setDebugMode) {
+          this.renderer.setDebugMode(false)
+        }
       } else {
         // Minimal FPS counter when overlay is disabled
         this.renderer.drawText(`FPS: ${this._fps}`, { x: 4, y: 10 }, { color: '#00ff88', size: 8 })

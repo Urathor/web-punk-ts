@@ -8,6 +8,7 @@ import type { AudioManager   } from '@engine/audio'
 import type { UIManager      } from '@engine/ui'
 import type { EventEmitter   } from '@engine/events'
 import type { GameEventMap   } from '@engine/events'
+import type { IDebugger       } from '@engine/debug'
 import type { SaveManager    } from '@engine/save'
 import type { IScene         } from './IScene'
 
@@ -17,7 +18,7 @@ import type { IScene         } from './IScene'
  */
 export interface IEngine {
   readonly renderer:  IRenderer
-  readonly debug:     boolean
+  readonly debugger:  IDebugger | null
   readonly assets:    AssetLoader
   readonly input:     InputManager
   readonly actions:   ActionMap

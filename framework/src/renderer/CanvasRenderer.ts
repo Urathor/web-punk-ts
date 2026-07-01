@@ -49,12 +49,33 @@ export class CanvasRenderer implements IRenderer {
   }
 
   // Draw-call counter (dev builds only)
-  private _drawCalls     = 0
-  private _drawCallTimer = 0
-  private _drawCallsLast = 0
+  private _debugMode          = false
+  private _gameDrawCalls      = 0
+  private _debugDrawCalls     = 0
+  private _drawCallTimer      = 0
+  private _gameDrawCallsLast  = 0
+  private _debugDrawCallsLast = 0
+  private _frameCount         = 0
+  private _lastClearTime      = 0
 
-  /** Last frame's draw-call count (updated each second). Only meaningful in DEV builds. */
-  get drawCallsLastFrame(): number { return this._drawCallsLast }
+  /** Last frame's total draw-call count (updated each second). Only meaningful in DEV builds. */
+  get drawCallsLastFrame(): number { return this._gameDrawCallsLast + this._debugDrawCallsLast }
+  /** Last frame's game draw-call count. */
+  get gameDrawCallsLastFrame(): number { return this._gameDrawCallsLast }
+  /** Last frame's debug draw-call count. */
+  get debugDrawCallsLastFrame(): number { return this._debugDrawCallsLast }
+
+  setDebugMode(enabled: boolean): void {
+    this._debugMode = enabled
+  }
+
+  private incrementDrawCall(): void {
+    if (this._debugMode) {
+      this._debugDrawCalls++
+    } else {
+      this._gameDrawCalls++
+    }
+  }
 
   constructor(canvas: HTMLCanvasElement, options: CanvasRendererOptions = {}) {
     this.canvas = canvas
@@ -129,14 +150,21 @@ export class CanvasRenderer implements IRenderer {
 
   clear(color = '#000000'): void {
     if (DEBUG_OVERLAY_ENABLED) {
-      // Treat clear() as a frame boundary — report last frame's draw-call count
-      this._drawCallTimer += 16.67  // approximate; good enough for console logging
-      if (this._drawCallTimer >= 1000) {
-        this._drawCallsLast = Math.round(this._drawCalls * 16.67)
-        this._drawCalls     = 0
-        this._drawCallTimer -= 1000
-        // Uncomment to log draw calls per frame to the console:
-        // console.debug(`[CanvasRenderer] ~${this._drawCallsLast} draw calls/frame`)
+      const now = performance.now()
+      // Detect if this clear() is in a new frame (at least 5ms has passed since last frame's first clear)
+      if (now - this._lastClearTime > 5) {
+        this._lastClearTime = now
+        this._frameCount++
+        
+        this._drawCallTimer += 16.67  // approximate; good enough for console logging
+        if (this._drawCallTimer >= 1000) {
+          this._gameDrawCallsLast  = this._frameCount > 0 ? Math.round(this._gameDrawCalls / this._frameCount) : 0
+          this._debugDrawCallsLast = this._frameCount > 0 ? Math.round(this._debugDrawCalls / this._frameCount) : 0
+          this._gameDrawCalls  = 0
+          this._debugDrawCalls = 0
+          this._frameCount     = 0
+          this._drawCallTimer  = 0
+        }
       }
     }
     this.ctx.fillStyle = color
@@ -148,7 +176,7 @@ export class CanvasRenderer implements IRenderer {
     srcRect: IRect,
     dstRect: IRect
   ): void {
-    if (DEBUG_OVERLAY_ENABLED) { this._drawCalls++ }
+    if (DEBUG_OVERLAY_ENABLED) { this.incrementDrawCall() }
     this.ctx.drawImage(
       image,
       srcRect.x, srcRect.y, srcRect.width, srcRect.height,
@@ -157,6 +185,7 @@ export class CanvasRenderer implements IRenderer {
   }
 
   drawRect(rect: IRect, color: string, fill = true): void {
+    if (DEBUG_OVERLAY_ENABLED) { this.incrementDrawCall() }
     if (fill) {
       this.ctx.fillStyle = color
       this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
@@ -167,6 +196,7 @@ export class CanvasRenderer implements IRenderer {
   }
 
   drawCircle(center: IPoint, radius: number, color: string, fill = true): void {
+    if (DEBUG_OVERLAY_ENABLED) { this.incrementDrawCall() }
     this.ctx.beginPath()
     this.ctx.arc(center.x, center.y, radius, 0, Math.PI * 2)
     if (fill) {
@@ -179,6 +209,7 @@ export class CanvasRenderer implements IRenderer {
   }
 
   drawLine(from: IPoint, to: IPoint, color: string, lineWidth = 1): void {
+    if (DEBUG_OVERLAY_ENABLED) { this.incrementDrawCall() }
     this.ctx.strokeStyle = color
     this.ctx.lineWidth   = lineWidth
     this.ctx.beginPath()
@@ -188,6 +219,7 @@ export class CanvasRenderer implements IRenderer {
   }
 
   drawText(text: string, position: IPoint, style: TextStyle): void {
+    if (DEBUG_OVERLAY_ENABLED) { this.incrementDrawCall() }
     this.ctx.fillStyle = style.color
     this.ctx.font      = `${style.size}px ${style.font ?? DEFAULT_FONT_FAMILY}`
     this.ctx.textAlign = style.align ?? 'left'

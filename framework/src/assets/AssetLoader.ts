@@ -1,4 +1,5 @@
 import { Texture } from './Texture'
+import type { IDebugger } from '@engine/debug'
 
 /** Optional `FontFace` descriptors for {@link AssetLoader.loadFont}. */
 export interface FontFileOptions {
@@ -16,6 +17,15 @@ export class AssetLoader {
   private audioCache   = new Map<string, AudioBuffer>()
   private audioCtx:      AudioContext | null = null
   private loadedFonts  = new Set<string>()
+  private debugger:      IDebugger | null = null
+
+  setDebugger(dbg: IDebugger | null): void {
+    this.debugger = dbg
+  }
+
+  private reportError(msg: string): void {
+    this.debugger?.logError(msg)
+  }
 
   // ── Texture ─────────────────────────────────────────────────────────────────
 
@@ -58,13 +68,21 @@ export class AssetLoader {
     const cached = this.audioCache.get(path)
     if (cached) return cached
 
-    if (!this.audioCtx) this.audioCtx = new AudioContext()
-    const response = await fetch(path)
-    if (!response.ok) throw new Error(`AssetLoader: failed to load audio "${path}" (${response.status})`)
-    const arrayBuf = await response.arrayBuffer()
-    const buffer   = await this.audioCtx.decodeAudioData(arrayBuf)
-    this.audioCache.set(path, buffer)
-    return buffer
+    try {
+      if (!this.audioCtx) this.audioCtx = new AudioContext()
+      const response = await fetch(path)
+      if (!response.ok) {
+        throw new Error(`failed to fetch asset (${response.status})`)
+      }
+      const arrayBuf = await response.arrayBuffer()
+      const buffer   = await this.audioCtx.decodeAudioData(arrayBuf)
+      this.audioCache.set(path, buffer)
+      return buffer
+    } catch (err: any) {
+      const msg = `AssetLoader: failed to load audio "${path}": ${err.message}`
+      this.reportError(msg)
+      throw new Error(msg)
+    }
   }
 
   // ── Fonts ──────────────────────────────────────────────────────
@@ -84,14 +102,20 @@ export class AssetLoader {
     if (this.loadedFonts.has(key)) return
     if (typeof FontFace === 'undefined' || !document.fonts) return
 
-    const face = new FontFace(family, `url(${url})`, {
-      weight:  opts.weight  ?? 'normal',
-      style:   opts.style   ?? 'normal',
-      display: opts.display ?? 'swap',
-    })
-    await face.load()
-    document.fonts.add(face)
-    this.loadedFonts.add(key)
+    try {
+      const face = new FontFace(family, `url(${url})`, {
+        weight:  opts.weight  ?? 'normal',
+        style:   opts.style   ?? 'normal',
+        display: opts.display ?? 'swap',
+      })
+      await face.load()
+      document.fonts.add(face)
+      this.loadedFonts.add(key)
+    } catch (err: any) {
+      const msg = `AssetLoader: failed to load font "${family}" from "${url}": ${err.message}`
+      this.reportError(msg)
+      throw new Error(msg)
+    }
   }
 
   /**
@@ -127,7 +151,11 @@ export class AssetLoader {
     return new Promise((resolve, reject) => {
       const img    = new Image()
       img.onload   = () => resolve(new Texture(img, path))
-      img.onerror  = () => reject(new Error(`AssetLoader: failed to load "${path}"`))
+      img.onerror  = () => {
+        const msg = `AssetLoader: failed to load image "${path}"`
+        this.reportError(msg)
+        reject(new Error(msg))
+      }
       img.src      = path
     })
   }

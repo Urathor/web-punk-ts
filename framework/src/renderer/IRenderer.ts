@@ -90,4 +90,7 @@ export interface IRenderer {
 
   /** Toggle the browser upscale filter between 'pixelated' and 'smooth'. */
   toggleScaleFilter(): void
+
+  /** Toggle debug drawing mode (diverts draw call counting to debug stats). */
+  setDebugMode?(enabled: boolean): void
 }

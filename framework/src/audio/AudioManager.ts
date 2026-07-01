@@ -1,3 +1,5 @@
+import type { IDebugger } from '@engine/debug'
+
 export class AudioManager {
   private ctx:              AudioContext | null = null
   private masterGain:       GainNode | null = null
@@ -6,6 +8,11 @@ export class AudioManager {
   private currentBGMSource: AudioBufferSourceNode | null = null
   private pendingQueue:     Array<() => void> = []
   private unlocked = false
+  private debugger: IDebugger | null = null
+
+  setDebugger(dbg: IDebugger | null): void {
+    this.debugger = dbg
+  }
 
   constructor() {
     // Unlock AudioContext on first user interaction (browser autoplay policy).
@@ -23,6 +30,10 @@ export class AudioManager {
   // ── SFX ───────────────────────────────────────────────────────────────────
 
   playSFX(buffer: AudioBuffer, volume = 1): void {
+    if (!buffer) {
+      this.debugger?.logWarning('AudioManager: playSFX called with null or undefined buffer')
+      return
+    }
     this.enqueue(() => {
       const ctx    = this.getCtx()
       const source = ctx.createBufferSource()
@@ -42,6 +53,10 @@ export class AudioManager {
   // ── BGM ───────────────────────────────────────────────────────────────────
 
   playBGM(buffer: AudioBuffer, fadeMs = 500): void {
+    if (!buffer) {
+      this.debugger?.logWarning('AudioManager: playBGM called with null or undefined buffer')
+      return
+    }
     this.enqueue(() => {
       const ctx     = this.getCtx()
       const bgmGain = this.getBgmGain()
