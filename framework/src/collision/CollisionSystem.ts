@@ -6,16 +6,17 @@ import { CircleCollider } from './CircleCollider'
 import { testAABB, testCircleCircle, testCircleBox, inverseFace,
          CollisionFace, CollisionResult } from './AABB'
 import type { TileMap  } from '@engine/tilemap/TileMap'
-import type { EventEmitter } from '@engine/events'
+import type { IEventEmitter } from '@engine/events'
 import type { GameEventMap } from '@engine/events'
+import type { ICollisionSystem } from './ICollisionSystem'
 
-export class CollisionSystem {
+export class CollisionSystem implements ICollisionSystem {
   private colliders:   BaseCollider[]   = []
   private activePairs: Set<string>      = new Set()
   private tileMap:     TileMap | null   = null
-  private bus:         EventEmitter<GameEventMap> | null = null
+  private bus:         IEventEmitter<GameEventMap> | null = null
 
-  setEventBus(bus: EventEmitter<GameEventMap>): void {
+  setEventBus(bus: IEventEmitter<GameEventMap>): void {
     this.bus = bus
   }
 

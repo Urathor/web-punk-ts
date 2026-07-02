@@ -38,4 +38,22 @@ describe('computeNineSlice', () => {
       expect(p.dst.height).toBeGreaterThan(0)
     }
   })
+
+  it('shrinks corners to fit and stays within bounds when height is smaller than top + bottom', () => {
+    const dst   = { x: 5, y: 5, width: 100, height: 10 }   // height < top + bottom (16)
+    const pairs = computeNineSlice(src, insets, dst)
+    for (const p of pairs) {
+      expect(p.dst.y).toBeGreaterThanOrEqual(dst.y)
+      expect(p.dst.y + p.dst.height).toBeLessThanOrEqual(dst.y + dst.height)
+    }
+  })
+
+  it('shrinks corners to fit and stays within bounds when width is smaller than left + right', () => {
+    const dst   = { x: 5, y: 5, width: 10, height: 100 }   // width < left + right (16)
+    const pairs = computeNineSlice(src, insets, dst)
+    for (const p of pairs) {
+      expect(p.dst.x).toBeGreaterThanOrEqual(dst.x)
+      expect(p.dst.x + p.dst.width).toBeLessThanOrEqual(dst.x + dst.width)
+    }
+  })
 })

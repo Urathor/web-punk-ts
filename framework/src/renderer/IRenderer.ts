@@ -12,6 +12,12 @@ export interface TextStyle {
   font?:  string
   /** Horizontal alignment relative to the position x. Defaults to 'left'. */
   align?: 'left' | 'center' | 'right'
+  /** Vertical alignment relative to the position y — i.e. what `position.y` refers to
+   *  on the glyphs. Defaults to `'alphabetic'` (the canvas default) for backwards
+   *  compatibility with hand-tuned call sites; pass `'top'` when `position.y` is meant
+   *  to be the top of the text's box (e.g. `UIText`, which lays out like a top-anchored
+   *  box via `getBounds()`). */
+  baseline?: 'alphabetic' | 'top' | 'middle' | 'bottom'
 }
 
 /** Browser upscale filter applied to `canvas.style.imageRendering`. */

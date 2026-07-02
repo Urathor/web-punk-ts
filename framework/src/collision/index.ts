@@ -9,3 +9,4 @@ export { testAABB, testCircleCircle,
          CollisionFace                       } from './AABB'
 export type { CollisionResult               } from './AABB'
 export { CollisionSystem                    } from './CollisionSystem'
+export type { ICollisionSystem               } from './ICollisionSystem'

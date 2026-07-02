@@ -1,7 +1,8 @@
 import type { IDebugger } from '@engine/debug'
 import type { ISaveProvider } from './ISaveProvider'
+import type { ISaveManager } from './ISaveManager'
 
-export class SaveManager {
+export class SaveManager implements ISaveManager {
   private readonly provider:  ISaveProvider
   private readonly namespace: string
   private debugger: IDebugger | null = null

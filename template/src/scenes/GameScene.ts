@@ -1,5 +1,5 @@
 import type { IScene, IEngine, IRenderer } from 'webpunk.ts'
-import { UICanvas, UIPanel, UIProgressBar, UIText, UIButton, UITheme, Anchor, solid, Vector2 } from 'webpunk.ts'
+import { UICanvas, UIPanel, UIProgressBar, UIText, TextAlign, UIButton, UIGrid, UITheme, Anchor, solid, Vector2 } from 'webpunk.ts'
 
 /**
  * Main gameplay scene stub.
@@ -25,54 +25,64 @@ export class GameScene implements IScene {
     // from these few colours, so changing them restyles all widgets at once.
     // Edit the values (or delete any key to keep its default) to suit your game.
     engine.ui.setTheme(UITheme.createDefault({
-      fill:   '#223044',   // base panel & button fill
+      fill: '#223044',   // base panel & button fill
       border: '#48597a',   // outlines / borders
       accent: '#5a9bd8',   // progress fill + grid-selection highlight
-      text:   '#ffffff',   // label text colour
+      text: '#ffffff',   // label text colour
       radius: 6,           // corner roundness in px
     }))
     const hud = engine.ui.add(new UICanvas('demo-hud', 100))
-
+    
     // The cluster is anchored to screen centre. Each widget anchors to
     // Anchor.Center; its offset positions it relative to that point, so the
     // 150×70 panel is centred by offsetting it by half its size.
     // Themed container panel (nine-slice background supplied by the theme).
-    const panel  = hud.addElement(new UIPanel())
+    const panel = hud.addElement(new UIPanel())
     panel.anchor = Anchor.Center
-    panel.offset = new Vector2(-75, -35)
-    panel.width  = 150
+    panel.width = 175
     panel.height = 70
+    panel.offset = new Vector2(-panel.width / 2, -panel.height / 2)
 
-    const title  = hud.addElement(new UIText())
-    title.anchor = Anchor.Center
-    title.text   = 'Themed HUD'
-    title.offset = new Vector2(-67, -28)
+    const title = panel.addChild(new UIText())
+    title.anchor = Anchor.TopCenter
+    title.text = 'Themed HUD'
+    title.textAlign = 'center' as TextAlign
+    title.width = 150
+    title.height = 8
+    title.offset = new Vector2(-75, 16)
 
     // Themed progress bar (sprite track + fill come from the theme).
-    const health  = hud.addElement(new UIProgressBar())
+    const health = panel.addChild(new UIProgressBar())
     health.anchor = Anchor.Center
-    health.offset = new Vector2(-67, -13)
-    health.width  = 122
-    health.height = 9
-    health.value  = 0.6
+    health.width = 150
+    health.height = 8
+    health.offset = new Vector2(-health.width / 2, -12)
+    health.value = 0.6
+    health.showBorder = false;
 
-    // Interactive themed button — hover/press reuse the theme's state tints.
-    const heal   = hud.addElement(new UIButton(engine.input))
-    heal.anchor  = Anchor.Center
-    heal.label   = 'Heal +10%'
-    heal.offset  = new Vector2(-67, 3)
-    heal.width   = 78
-    heal.height  = 16
+    // Interactive themed buttons, laid out by a `UIGrid` in `'row'` mode instead
+    // of manually-computed anchors/offsets — the grid positions each child for
+    // you and grows/shrinks automatically if a button's size changes.
+    const buttonRow = panel.addChild(new UIGrid())
+    buttonRow.mode = 'row'
+    buttonRow.padding = 6
+    buttonRow.anchor = Anchor.MiddleLeft
+    buttonRow.offset = new Vector2(16, 8)
+
+    const heal = buttonRow.addChild(new UIButton(engine.input))
+    heal.label.text = 'Heal 10%'
+    heal.width = 66
+    heal.height = 16
     heal.onClick = () => { health.value = Math.min(1, health.value + 0.1) }
 
     // Explicit background overrides the theme (precedence demo): this swatch
     // keeps the flat-rectangle colour look even while a theme is active.
-    const swatch      = hud.addElement(new UIPanel())
-    swatch.anchor     = Anchor.Center
-    swatch.offset     = new Vector2(19, 3)
-    swatch.width      = 36
-    swatch.height     = 16
-    swatch.background = solid({ fill: '#2e7d46', border: '#8be0a4' })
+    // Interactive themed button — hover/press reuse the theme's state tints.
+    const damage = buttonRow.addChild(new UIButton(engine.input))
+    damage.label.text = 'Damage 10%'
+    damage.width = 66
+    damage.height = 16
+    damage.onClick = () => { health.value = Math.max(0, health.value - 0.1) }
     // -------------------------------------------------------------------------
   }
 
@@ -85,9 +95,9 @@ export class GameScene implements IScene {
     engine.collision.setTileMap(null as never)
   }
 
-  onPause():  void {}
-  onResume(): void {}
-  fixedUpdate(_dt: number): void {}
+  onPause(): void { }
+  onResume(): void { }
+  fixedUpdate(_dt: number): void { }
 
   update(_dt: number): void {
     if (this._engine.actions.isActionPressed('cancel')) {

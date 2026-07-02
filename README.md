@@ -306,24 +306,29 @@ import type { IEngine } from 'webpunk.ts'
 |---|---|---|
 | `canvas` | `HTMLCanvasElement` | The canvas element to render into |
 | `renderer` | `IRenderer` | A `CanvasRenderer` instance |
-| `debug` | `boolean?` | Enables debug overlay |
+| `debug` | `boolean?` | Reserved for a future explicit toggle — not currently wired. The debug overlay is enabled automatically whenever the build isn't a production build (`process.env.NODE_ENV !== 'production'`), regardless of this option. |
 | `saveProvider` | `ISaveProvider?` | Custom save backend (defaults to `localStorage`) |
 
 #### `IEngine` — properties available in scenes and entities
 
+Every system is exposed through its interface, not its concrete class — scenes and
+components should depend on `IEngine`'s field types below, not on `Camera`,
+`AssetLoader`, etc. directly. Each concrete class still implements the matching
+interface, and `Engine` itself constructs the concrete instances internally.
+
 | Property | Type | Description |
 |---|---|---|
 | `renderer` | `IRenderer` | The active renderer |
-| `assets` | `AssetLoader` | Load textures and audio |
-| `input` | `InputManager` | Raw key/mouse state |
-| `actions` | `ActionMap` | Named action bindings |
-| `camera` | `Camera` | Camera position and layers |
-| `collision` | `CollisionSystem` | Register/unregister colliders |
-| `audio` | `AudioManager` | SFX and BGM playback |
-| `events` | `EventEmitter<GameEventMap>` | Global typed event bus |
-| `save` | `SaveManager` | Persistent save data |
-| `debug` | `boolean` | Whether debug mode is active |
-| `ui` | `UIManager` | Screen-space UI canvas management |
+| `debugger` | `IDebugger \| null` | The debug overlay controller, or `null` when debug mode is off |
+| `assets` | `IAssetLoader` | Load textures and audio |
+| `input` | `IInputManager` | Raw key/mouse state |
+| `actions` | `IActionMap` | Named action bindings |
+| `camera` | `ICamera` | Camera position and layers |
+| `collision` | `ICollisionSystem` | Register/unregister colliders |
+| `audio` | `IAudioManager` | SFX and BGM playback |
+| `events` | `IEventEmitter<GameEventMap>` | Global typed event bus |
+| `save` | `ISaveManager` | Persistent save data |
+| `ui` | `IUIManager` | Screen-space UI canvas management |
 
 #### Scene management methods
 
@@ -510,8 +515,10 @@ ctrl.follow(player)
 #### Custom camera controller
 
 ```typescript
+import type { ICameraController, ICamera } from 'webpunk.ts'
+
 class ShakeController implements ICameraController {
-  update(camera: Camera, _dt: number): void {
+  update(camera: ICamera, _dt: number): void {
     camera.position.x += (Math.random() - 0.5) * 4
     camera.position.y += (Math.random() - 0.5) * 4
   }
@@ -847,10 +854,17 @@ which returns the element so you can configure it inline.
 |---|---|
 | `text` | The string to draw |
 | `color` | CSS colour (default `'#ffffff'`) |
-| `fontSize` | Size in logical pixels when no `bitmapFont` is set (default `8`) |
+| `fontSize` | Size in logical pixels used when `height` is left at `0` (default `8`) |
 | `font` | CSS font family used when no `bitmapFont` is set (default `DEFAULT_FONT_FAMILY` — Science Gothic, sans-serif) |
 | `bitmapFont` | Optional `BitmapFont` for pixel text |
-| `fontScale` | Scale applied when using a `bitmapFont` |
+| `fontScale` | Bitmap-font scale used when `height` is left at `0` |
+| `textAlign` | `'left'` \| `'center'` \| `'right'` — alignment within the text's own box (default `'left'`) |
+
+`UIText`'s `width`/`height` default to `0` ("auto"). Leave `height` at `0` and the
+text renders at `fontSize`/`fontScale`; set an explicit `height` and the effective
+font size/scale is derived to fit it instead. Leave `width` at `0` and the box
+auto-sizes to the measured text; set an explicit `width` and use `textAlign` to
+position the text (`'left'`, `'center'`, or `'right'`) within it.
 
 **`UIPanel`** — a filled / outlined rectangle.
 
@@ -871,22 +885,49 @@ which returns the element so you can configure it inline.
 | `fillColor` / `backgroundColor` / `borderColor` | Colours |
 | `showBorder` | Draw the border (default `true`) |
 
-**`UIButton`** — a clickable button. Pass `engine.input` to the constructor.
+**`UIButton`** — a clickable button, composed of a `UIPanel` background (`bgPanel`)
+and a `UIText` label. Pass `engine.input` to the constructor.
 
 | Member | Description |
 |---|---|
-| `label` | Button text |
+| `label` | The caption — a `UIText` child; set `button.label.text = 'Heal'` |
+| `bgPanel` | The background panel — a `UIPanel` child |
 | `onClick` | Callback fired on release inside the button |
-| `normal` / `hover` / `pressed` | `ButtonColors` (`{ fill, border, text }`) per state |
-| `textColor` | Overrides every state's text colour when set (default `null` = use the per-state `text`) |
+| `hoverBackground` / `pressedBackground` | Optional per-state sprite/colour backgrounds; fall back to `background`/theme + a tint when unset |
+| `hoverTint` / `pressedTint` | Colour overlay applied over the base background for states with no dedicated background |
+| `textColor` | Overrides the theme/default text colour when set (default `null`) |
 | `font` | CSS font family for the label when no `bitmapFont` is set (default `DEFAULT_FONT_FAMILY`) |
 | `bitmapFont` / `fontSize` | Text-rendering options |
 
 **`UIImage`** — draws a `Sprite`. Set `sprite`, plus optional `width` / `height` to scale.
 
-**`UIGrid`** — a grid of cells (inventory, hotbar). Configure `columns`, `rows`,
-`cellSize`, and `padding`; fill cells with `setCell(row, col, { sprite, quantity, selected })`.
-The quantity badge renders with `font`, `fontSize`, and `textColor` (or a `bitmapFont` when set).
+**`UIGrid`** — a **layout container**, not a widget with its own visuals: it arranges
+its children (any `UIElement`, added via the inherited `addChild()`) into a row,
+column, or grid, computing each child's `offset` automatically — no manual
+anchor/offset math needed for common layouts.
+
+| Member | Description |
+|---|---|
+| `mode` | `'grid'` (default), `'row'`, or `'column'` |
+| `columns` | Number of columns in `'grid'` mode (default `4`); ignored in `'row'`/`'column'` mode |
+| `rows` | Optional explicit row count in `'grid'` mode — derived from child count when unset |
+| `cellSize` | `null` (default) sizes each row/column dynamically from its children's own size; set a number to force uniform fixed-size cells |
+| `padding` | Gap between cells, and around the outer edge, in logical pixels (default `2`) |
+
+```typescript
+const hotbar = hud.addElement(new UIGrid())
+hotbar.mode     = 'row'
+hotbar.cellSize = 20
+hotbar.padding  = 2
+for (const item of items) {
+  const icon = hotbar.addChild(new UIImage())
+  icon.sprite = item.sprite
+  icon.width  = icon.height = 20
+}
+```
+
+Build an inventory-style grid from `UIGrid` + `UIImage`/`UIText` children — there is no
+separate sprite/quantity cell-data API; compose it from the base widgets instead.
 
 #### `Anchor`
 
@@ -918,6 +959,39 @@ automatically. To resolve anchors yourself outside the Engine, call
 Use a negative `offset` to inset from the right/bottom edges — e.g. `Anchor.TopRight`
 with `offset = new Vector2(-52, 6)` sits just inside the top-right corner.
 
+#### Containers & nested anchoring
+
+Any `UIElement` can hold children via `addChild()` — `UIPanel` is the common choice for
+grouping widgets so they move together:
+
+```typescript
+const panel = hud.addElement(new UIPanel())
+panel.anchor = Anchor.Center
+panel.offset = new Vector2(-75, -35)
+panel.width  = 150
+panel.height = 70
+
+// Anchors resolve relative to the panel's own bounds, not the whole canvas.
+const title = panel.addChild(new UIText())
+title.anchor = Anchor.TopCenter
+title.offset = new Vector2(0, 4)   // 4px below the panel's top edge, centred in it
+
+const closeBtn = panel.addChild(new UIButton(engine.input))
+closeBtn.anchor = Anchor.TopRight
+closeBtn.offset = new Vector2(-18, 2)   // inset from the panel's own top-right corner
+closeBtn.label.text = 'X'
+```
+
+- Moving or resizing the parent (`panel.offset`, `panel.width`/`height`) moves and
+  re-anchors every descendant with it — no manual repositioning needed.
+- Nesting is unlimited — a panel can contain another panel, and so on.
+- Only elements added directly to a `UICanvas` via `addElement` are top-level; those
+  still anchor against the whole logical canvas, exactly as before.
+- `addChild` detaches the element from any previous parent first, so reparenting is
+  safe. `removeChild` detaches it again (its `parent` becomes `null`).
+- A `UITheme` applied to a canvas (or via `setTheme`) walks the whole subtree, so
+  themed backgrounds reach nested children too.
+
 #### `BitmapFont`
 
 Render crisp pixel text from a sprite sheet. Load from a JSON descriptor, or build
@@ -946,7 +1020,7 @@ const font2 = new BitmapFont({
 | `measureString(text, scale?)` | Returns `{ width, height }` |
 | `BitmapFont.load(path, assets)` | Static — load from a JSON descriptor |
 
-Assign a `BitmapFont` to a `UIText` (or `UIButton` / `UIGrid`) through its
+Assign a `BitmapFont` to a `UIText` (or `UIButton`) through its
 `bitmapFont` property to use it in place of the default canvas font.
 
 #### Sprite skins & theming
@@ -993,7 +1067,7 @@ hudCanvas.setTheme(myOtherTheme)                                  // per-canvas 
 
 Themes are applied when a widget is added (`canvas.addElement`) and re-applied to
 existing children by `setTheme`. Applying a theme propagates `colors.text` to
-`UIText.color`, `UIButton.textColor` and `UIGrid.textColor`, and `fontFamily` to each
+`UIText.color` (and, in turn, `UIButton.label.color`), and `fontFamily` to each text
 widget's `font` — so changing the theme's colour/font tokens restyles the **text** too,
 not just the backgrounds.
 
@@ -1011,6 +1085,37 @@ a state has none, the base background is drawn with a `hoverTint` / `pressedTint
 **Pixel-art vs HD.** Set `UITheme.smoothing` (default `false`, crisp), applied once per
 canvas render. Sprite tints are pre-baked to a cached offscreen canvas, so tinting adds
 no per-frame cost.
+
+#### Custom composite widgets
+
+`UITheme.applyTo` only ever dispatches on the two base components, `UIPanel` and
+`UIText` — it has no special cases for `UIButton`/`UIProgressBar`/`UIGrid` or any other
+widget. Build your own widget out of `UIPanel`/`UIText` children (`addChild`'d in the
+constructor) and it is themed automatically, with **zero theme-side code**, because a
+`UICanvas`'s theme-application walk recurses into every element's `children`:
+
+```typescript
+import { UIElement, UIPanel, UIText } from 'webpunk.ts'
+import type { IRenderer } from 'webpunk.ts'
+
+class HealthPip extends UIElement {
+  readonly bg    = this.addChild(new UIPanel())
+  readonly label = this.addChild(new UIText())
+
+  render(_renderer: IRenderer, _ip: number): void {
+    // children render themselves via the generic child walk — nothing to draw here
+  }
+}
+```
+
+If a child's background needs to change every frame based on the composite's own state
+(hover/pressed, a fill percentage, etc. — this is how the built-in `UIButton` and
+`UIProgressBar` implement their state feedback), set that child's `themed = false` and
+read `this.appliedTheme` directly inside the composite's own `update(dt)`, reassigning
+the child's `background`/`tint` fields each tick. Keep any "explicit override wins over
+theme" field (e.g. a `textColor`) on the composite itself rather than writing it onto
+the child directly — once a theme value is written into a child field, there's no way
+to tell "the theme set this" apart from "the user explicitly set this".
 
 #### Example: building a HUD
 
@@ -1053,7 +1158,7 @@ function buildHud(engine: IEngine): void {
   // Interactive themed button — hover/press reuse the theme's state tints.
   const heal   = hud.addElement(new UIButton(engine.input))
   heal.anchor  = Anchor.Center
-  heal.label   = 'Heal +10%'
+  heal.label.text = 'Heal +10%'
   heal.offset  = new Vector2(-67, 3)
   heal.width   = 78
   heal.height  = 16
@@ -1138,7 +1243,7 @@ await engine.assets.loadGoogleFonts({ family: 'Inter', axis: 'wght@400;700' })
 ```
 
 Once registered, use the family name anywhere a font is accepted — `renderer.drawText`,
-a `UIText`/`UIButton`/`UIGrid` `font` property, or a `UITheme`'s `fontFamily`. The
+a `UIText`/`UIButton` `font` property, or a `UITheme`'s `fontFamily`. The
 framework's default theme uses **Science Gothic** with a `sans-serif` fallback
 (`DEFAULT_FONT_FAMILY`); scaffolded projects ship the font in `public/fonts/` and load
 it in `main.ts`. Font loading is a no-op in headless environments (no `FontFace`/`document.fonts`).

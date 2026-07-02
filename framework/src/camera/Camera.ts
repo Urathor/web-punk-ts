@@ -2,6 +2,7 @@ import { Vector2 }              from '@engine/math'
 import type { IRenderer }       from '@engine/renderer'
 import { RenderLayer }          from './RenderLayer'
 import type { ICameraController } from './ICameraController'
+import type { ICamera }         from './ICamera'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '@engine/constants'
 
 /** A rectangular region of the logical screen, in logical pixels. */
@@ -12,7 +13,7 @@ export interface Viewport {
   height: number
 }
 
-export class Camera {
+export class Camera implements ICamera {
   position:       Vector2 = new Vector2(0, 0)
   imageSmoothing: boolean = false
   controller:     ICameraController | null = null

@@ -1,9 +1,9 @@
 import type { IRenderer         } from '@engine/renderer'
 import type { BaseCollider      } from '@engine/collision'
-import type { Camera            } from '@engine/camera'
-import type { InputManager      } from '@engine/input'
+import type { ICamera           } from '@engine/camera'
+import type { IInputManager     } from '@engine/input'
 import type { ActionMap         } from '@engine/input'
-import type { AudioManager      } from '@engine/audio'
+import type { IAudioManager     } from '@engine/audio'
 import type { IComponent        } from '@engine/entities'
 import type { Entity            } from '@engine/entities'
 import { BoxCollider            } from '@engine/collision'
@@ -79,7 +79,7 @@ export class DebugOverlay {
 
   // ── Render: collision wireframes ───────────────────────────────────────────
 
-  renderColliders(renderer: IRenderer, colliders: readonly BaseCollider[], camera: Camera, dbg: Debugger): void {
+  renderColliders(renderer: IRenderer, colliders: readonly BaseCollider[], camera: ICamera, dbg: Debugger): void {
     if (!dbg.visible) return
 
     renderer.pushTransform(-Math.round(camera.position.x), -Math.round(camera.position.y))
@@ -155,7 +155,7 @@ export class DebugOverlay {
 
   // ── Render: combined system panel (top-right) ─────────────────────────────
 
-  renderSystemPanel(renderer: IRenderer, dbg: Debugger, input: InputManager, audio: AudioManager): void {
+  renderSystemPanel(renderer: IRenderer, dbg: Debugger, input: IInputManager, audio: IAudioManager): void {
     if (!dbg.visible) return
 
     const pad = 4

@@ -1,4 +1,4 @@
-import { CanvasRenderer, Engine } from 'webpunk.ts'
+import {UITheme, UICanvas, CanvasRenderer, Engine } from 'webpunk.ts'
 import { TitleScene             } from './scenes/TitleScene'
 
 const canvasEl = document.getElementById('game-canvas')

@@ -1,4 +1,4 @@
-import { AssetLoader } from '@engine/assets'
+import type { IAssetLoader } from '@engine/assets'
 import { Rect        } from '@engine/math'
 import type { AnimationClip, AnimationFrame } from './AnimationClip'
 import type { Sprite  } from './Sprite'
@@ -26,7 +26,7 @@ interface RawAnimationData {
 // ── Loader ───────────────────────────────────────────────────────────────────
 
 export class AnimationClipLoader {
-  constructor(private readonly assets: AssetLoader) {}
+  constructor(private readonly assets: IAssetLoader) {}
 
   async load(path: string): Promise<Record<string, AnimationClip>> {
     const response = await fetch(path)

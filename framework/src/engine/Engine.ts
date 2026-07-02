@@ -4,17 +4,27 @@ import type { IEngine      } from './IEngine'
 import type { IRenderer    } from '@engine/renderer'
 import { GameLoop           } from './GameLoop'
 import { SceneManager       } from './SceneManager'
+import type { ISceneManager } from './ISceneManager'
 import { AssetLoader        } from '@engine/assets'
+import type { IAssetLoader  } from '@engine/assets'
 import { InputManager       } from '@engine/input'
+import type { IInputManager } from '@engine/input'
 import { ActionMap          } from '@engine/input'
+import type { IActionMap    } from '@engine/input'
 import { Camera             } from '@engine/camera'
+import type { ICamera       } from '@engine/camera'
 import { CollisionSystem    } from '@engine/collision'
+import type { ICollisionSystem } from '@engine/collision'
 import { BoxCollider        } from '@engine/collision'
 import { AudioManager       } from '@engine/audio'
+import type { IAudioManager } from '@engine/audio'
 import { UIManager, setAnchorCanvasSize } from '@engine/ui'
+import type { IUIManager    } from '@engine/ui'
 import { EventEmitter       } from '@engine/events'
+import type { IEventEmitter } from '@engine/events'
 import type { GameEventMap  } from '@engine/events'
 import { SaveManager        } from '@engine/save'
+import type { ISaveManager  } from '@engine/save'
 import { LocalStorageSaveProvider } from '@engine/save'
 import { DebugOverlay, Debugger } from '@engine/debug'
 import type { IDebugger } from '@engine/debug'
@@ -24,16 +34,16 @@ const DEBUG_OVERLAY_ENABLED = process.env.NODE_ENV !== 'production'
 export class Engine implements IEngine {
   readonly renderer:     IRenderer
   readonly debugger:     IDebugger | null
-  readonly sceneManager: SceneManager
-  readonly assets:       AssetLoader
-  readonly input:        InputManager
-  readonly actions:      ActionMap
-  readonly camera:       Camera
-  readonly collision:    CollisionSystem
-  readonly audio:        AudioManager
-  readonly ui:           UIManager
-  readonly events:       EventEmitter<GameEventMap>
-  readonly save:         SaveManager
+  readonly sceneManager: ISceneManager
+  readonly assets:       IAssetLoader
+  readonly input:        IInputManager
+  readonly actions:      IActionMap
+  readonly camera:       ICamera
+  readonly collision:    ICollisionSystem
+  readonly audio:        IAudioManager
+  readonly ui:           IUIManager
+  readonly events:       IEventEmitter<GameEventMap>
+  readonly save:         ISaveManager
 
   private readonly loop: GameLoop
 

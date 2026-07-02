@@ -2,10 +2,10 @@ import type { ITileMapLoader }                       from '../ITileMapLoader'
 import { TileMap }                                   from '../TileMap'
 import type { TilesetData, TileLayerData,
               ObjectLayerData }                      from '../TileMap'
-import { AssetLoader }                               from '@engine/assets'
+import type { IAssetLoader }                         from '@engine/assets'
 
 export class TiledJsonLoader implements ITileMapLoader {
-  constructor(private assets: AssetLoader) {}
+  constructor(private assets: IAssetLoader) {}
 
   canLoad(path: string): boolean {
     return path.endsWith('.tmj') || path.endsWith('.json')

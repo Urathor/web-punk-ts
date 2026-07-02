@@ -1,4 +1,5 @@
-import type { InputManager } from './InputManager'
+import type { IInputManager } from './IInputManager'
+import type { IActionMap    } from './IActionMap'
 
 export type KeyBinding   = { type: 'key';   code:   string }
 export type MouseBinding = { type: 'mouse'; button: number }
@@ -8,10 +9,10 @@ export interface ActionDefinition {
   bindings: InputBinding[]
 }
 
-export class ActionMap {
+export class ActionMap implements IActionMap {
   private readonly actions = new Map<string, ActionDefinition>()
 
-  constructor(private readonly input: InputManager) {}
+  constructor(private readonly input: IInputManager) {}
 
   defineAction(name: string, bindings: InputBinding[]): void {
     this.actions.set(name, { bindings })

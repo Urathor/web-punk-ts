@@ -1,6 +1,8 @@
+import type { IEventEmitter } from './IEventEmitter'
+
 type Handler<T> = (payload: T) => void
 
-export class EventEmitter<TMap extends object> {
+export class EventEmitter<TMap extends object> implements IEventEmitter<TMap> {
   private listeners = new Map<keyof TMap, Set<Handler<unknown>>>()
 
   /** Optional hook called on every emit — used by DebugOverlay to stream events. */

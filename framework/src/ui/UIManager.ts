@@ -1,8 +1,9 @@
 import type { IRenderer } from '@engine/renderer'
 import { UICanvas        } from './UICanvas'
 import type { UITheme    } from './UITheme'
+import type { IUIManager } from './IUIManager'
 
-export class UIManager {
+export class UIManager implements IUIManager {
   private canvases: UICanvas[] = []
 
   /** Global default theme. Canvases without an explicit theme inherit it. */

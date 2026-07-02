@@ -1,117 +1,83 @@
-import { UIElement           } from '../UIElement'
-import type { IRenderer      } from '@engine/renderer'
-import type { BitmapFont     } from '../BitmapFont'
-import type { Sprite         } from '@engine/animation/Sprite'
-import type { UIBackground   } from '../backgrounds'
-import { Rect                } from '@engine/math'
-import { DEFAULT_FONT_FAMILY } from '@engine/constants'
+import { UIElement       } from '../UIElement'
+import type { IRenderer  } from '@engine/renderer'
+import { Rect, Vector2   } from '@engine/math'
+import { computeGridLayout } from './gridLayout'
+import type { GridLayoutMode } from './gridLayout'
 
-export interface GridCell {
-  sprite?:   Sprite
-  /** Displayed as a small label in the bottom-right corner when > 1. */
-  quantity?: number
-  selected?: boolean
-}
-
+/**
+ * A layout container: arranges its children (any `UIElement`, added via the inherited
+ * `addChild`) into a row, column, or grid — computing each child's `offset` from
+ * `mode`/`columns`/`rows`/`padding`/`cellSize`, removing manual anchor/offset math for
+ * common layouts. Draws nothing itself; children render themselves via the generic
+ * recursive child-render walk.
+ *
+ * Repurposed from the previous sprite/quantity inventory-cell widget (see
+ * `PATCHNOTES.md`) — there is no back-compat shim for the old `GridCell`/`setCell` API.
+ * Build an inventory-style UI from this layout container plus `UIImage`/`UIText`
+ * children instead.
+ */
 export class UIGrid extends UIElement {
-  columns:  number = 4
-  rows:     number = 4
-  /** Cell size in logical pixels (square). */
-  cellSize: number = 18
-  /** Gap between cells in logical pixels. */
-  padding:  number = 2
+  mode: GridLayoutMode = 'grid'
+  /** Number of columns in `'grid'` mode. Ignored in `'row'`/`'column'` mode. */
+  columns: number = 4
+  /** Optional explicit row count in `'grid'` mode — derived from child count
+   *  (`Math.ceil(children.length / columns)`) when unset. Ignored in `'row'`/
+   *  `'column'` mode. */
+  rows?: number
+  /** Fixed cell size (square) in logical pixels. `null` (default) sizes each
+   *  row/column dynamically from its children's own `getBounds()`. */
+  cellSize: number | null = null
+  /** Gap between cells, and around the outer edge, in logical pixels. */
+  padding: number = 2
 
-  cellBackgroundColor: string = '#1a1a2e'
-  cellBorderColor:     string = '#444466'
-  selectedColor:       string = '#8899ff'
+  private _lastSignature:  string | null = null
+  private _lastTotalWidth  = 0
+  private _lastTotalHeight = 0
 
-  /** Optional nine-slice/colour background drawn per cell (overrides the colours). */
-  cellBackground:     UIBackground | null = null
-  /** Optional highlight drawn over selected cells. */
-  selectedBackground: UIBackground | null = null
+  update(_dt: number): void {
+    const kids  = this.children
+    const sizes = kids.map(c => c.getBounds())
+    const sig   = this.buildSignature(sizes)
+    if (sig === this._lastSignature) return
+    this._lastSignature = sig
 
-  bitmapFont: BitmapFont | null = null
-  /** Quantity-badge text styling — used when no bitmapFont is set. */
-  font:      string = DEFAULT_FONT_FAMILY
-  fontSize:  number = 6
-  textColor: string = '#ffffff'
-
-  private cells: GridCell[][] = []
-
-  /** Called by UICanvas.addElement — computes widget size and initialises cells. */
-  onAttach(): void {
-    this.rebuildCells()
-    this.width  = this.columns * (this.cellSize + this.padding) + this.padding
-    this.height = this.rows    * (this.cellSize + this.padding) + this.padding
+    const layout = computeGridLayout(sizes, {
+      mode:     this.mode,
+      columns:  this.columns,
+      rows:     this.rows,
+      cellSize: this.cellSize,
+      padding:  this.padding,
+    })
+    kids.forEach((child, i) => {
+      const o = layout.offsets[i]!
+      child.offset = new Vector2(o.x, o.y)
+    })
+    this._lastTotalWidth  = layout.totalWidth
+    this._lastTotalHeight = layout.totalHeight
   }
 
-  private rebuildCells(): void {
-    this.cells = Array.from({ length: this.rows }, () =>
-      Array.from({ length: this.columns }, () => ({}))
+  /** Cheap "did anything change" signature — own layout knobs, child count, and each
+   *  child's current size — so `update()` only recomputes/reassigns offsets when
+   *  something actually changed (including a child auto-resizing itself, e.g. a
+   *  `UIText` whose `.text` changed, since `getBounds()` reflects that immediately). */
+  private buildSignature(sizes: { width: number; height: number }[]): string {
+    const own = `${this.mode}|${this.columns}|${this.rows ?? ''}|${this.cellSize ?? ''}|${this.padding}`
+    return `${own}|${sizes.map(s => `${s.width}x${s.height}`).join(',')}`
+  }
+
+  /** Auto-sizes from the computed layout unless an explicit `width`/`height` is set
+   *  (the "explicit wins" convention used elsewhere, e.g. `UIText`). */
+  getBounds(): Rect {
+    const pos = this.getPosition()
+    return new Rect(
+      pos.x, pos.y,
+      this.width  || this._lastTotalWidth,
+      this.height || this._lastTotalHeight,
     )
   }
 
-  setCell(row: number, col: number, cell: GridCell): void {
-    if (this.cells[row]?.[col] !== undefined) this.cells[row]![col] = cell
-  }
-
-  getCell(row: number, col: number): GridCell | undefined {
-    return this.cells[row]?.[col]
-  }
-
-  clearCell(row: number, col: number): void {
-    if (this.cells[row]?.[col] !== undefined) this.cells[row]![col] = {}
-  }
-
-  render(renderer: IRenderer, _interpolation: number): void {
-    const origin = this.getPosition()
-
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.columns; c++) {
-        const cell   = this.cells[r]?.[c]
-        const cellX  = origin.x + this.padding + c * (this.cellSize + this.padding)
-        const cellY  = origin.y + this.padding + r * (this.cellSize + this.padding)
-        const bounds = new Rect(cellX, cellY, this.cellSize, this.cellSize)
-
-        if (this.cellBackground) {
-          this.cellBackground.draw(renderer, bounds)
-          if (cell?.selected) {
-            if (this.selectedBackground) this.selectedBackground.draw(renderer, bounds)
-            else                         renderer.drawRect(bounds, this.selectedColor, false)
-          }
-        } else {
-          renderer.drawRect(bounds, this.cellBackgroundColor, true)
-          renderer.drawRect(bounds, cell?.selected ? this.selectedColor : this.cellBorderColor, false)
-        }
-
-        if (cell?.sprite) {
-          const iconPad  = 1
-          const iconRect = new Rect(
-            cellX + iconPad, cellY + iconPad,
-            this.cellSize - iconPad * 2,
-            this.cellSize - iconPad * 2
-          )
-          renderer.drawImage(cell.sprite.texture.image, cell.sprite.srcRect, iconRect)
-        }
-
-        if (cell?.quantity !== undefined && cell.quantity > 1) {
-          const qty = cell.quantity.toString()
-          if (this.bitmapFont) {
-            const m = this.bitmapFont.measureString(qty)
-            this.bitmapFont.drawString(
-              renderer, qty,
-              cellX + this.cellSize - m.width  - 1,
-              cellY + this.cellSize - m.height - 1
-            )
-          } else {
-            renderer.drawText(
-              qty,
-              { x: cellX + this.cellSize - 1, y: cellY + this.cellSize - 1 },
-              { color: this.textColor, size: this.fontSize, font: this.font, align: 'right' }
-            )
-          }
-        }
-      }
-    }
+  render(_renderer: IRenderer, _interpolation: number): void {
+    // no-op — this widget draws nothing itself; children render via the generic walk.
   }
 }
+

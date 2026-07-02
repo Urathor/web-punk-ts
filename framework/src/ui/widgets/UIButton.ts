@@ -1,32 +1,38 @@
 import { UIElement              } from '../UIElement'
 import type { IRenderer         } from '@engine/renderer'
 import type { BitmapFont        } from '../BitmapFont'
+import { UIPanel                 } from './UIPanel'
+import { UIText                  } from './UIText'
+import { SolidColorBackground    } from '../backgrounds'
 import type { UIBackground, Tint } from '../backgrounds'
-import type { InputManager      } from '@engine/input'
+import type { IInputManager     } from '@engine/input'
 import { DEFAULT_FONT_FAMILY     } from '@engine/constants'
+import { Vector2                 } from '@engine/math'
 
-export interface ButtonColors {
-  fill:   string
-  border: string
-  text:   string
-}
-
+/**
+ * A clickable button, composed of a `UIPanel` background (`bgPanel`) and a `UIText`
+ * label. Both are real children (`addChild`'d in the constructor, exposed as public
+ * readonly fields) — set `button.label.text = 'Heal'` to change the caption, or read
+ * `button.bgPanel` to tweak the background panel directly. `bgPanel`/`label` opt out
+ * of the generic per-element theme dispatch (`themed = false`) since the button reads
+ * `this.appliedTheme` directly in `update()` — this mirrors `UIProgressBar`'s
+ * `trackPanel`/`fillPanel` pattern and is what lets a single state machine (hover/
+ * pressed) drive which theme token (or tint) the background shows each frame.
+ */
 export class UIButton extends UIElement {
-  label:      string            = ''
+  readonly bgPanel: UIPanel
+  readonly label:   UIText
+
   bitmapFont: BitmapFont | null = null
   fontSize:   number            = 8
   /** CSS font family for the label — used when no bitmapFont is set. */
   font:       string            = DEFAULT_FONT_FAMILY
-  /** Overrides the per-state {@link ButtonColors.text} for every state when set
-   *  (non-null). Used by the label's `drawText` fallback; ignored for bitmap fonts. */
+  /** Overrides the theme/default text colour for every state when set (non-null). */
   textColor:  string | null     = null
 
-  normal:  ButtonColors = { fill: '#334466', border: '#6688aa', text: '#ffffff' }
-  hover:   ButtonColors = { fill: '#4455aa', border: '#88aadd', text: '#ffffff' }
-  pressed: ButtonColors = { fill: '#223355', border: '#446688', text: '#cccccc' }
-
   /** Optional per-state sprite/colour backgrounds. Missing states fall back to
-   *  {@link UIElement.background} drawn with the matching state tint. */
+   *  {@link UIElement.background} (or the theme's `panel` token, or a built-in
+   *  default look), drawn with the matching state tint. */
   hoverBackground:   UIBackground | null = null
   pressedBackground: UIBackground | null = null
   hoverTint:   Tint = { color: '#ffffff', strength: 0.15 }
@@ -37,8 +43,19 @@ export class UIButton extends UIElement {
   private _isHovered = false
   private _isPressed = false
 
-  constructor(private readonly input: InputManager) {
+  /** Fallback look when there's no explicit background, no theme, and no per-state
+   *  sprite — preserves today's default button appearance. */
+  private readonly _defaultBackground: UIBackground =
+    new SolidColorBackground({ fill: '#334466', border: '#6688aa' })
+
+  constructor(private readonly input: IInputManager) {
     super()
+    this.bgPanel = this.addChild(new UIPanel())
+    this.label   = this.addChild(new UIText())
+    this.bgPanel.themed = false
+    this.label.themed   = false
+    this.label.textAlign = 'center'
+    this.bgPanel.background = this._defaultBackground
   }
 
   update(_dt: number): void {
@@ -56,47 +73,42 @@ export class UIButton extends UIElement {
     if (!this.input.isMouseHeld(0)) {
       this._isPressed = false
     }
+
+    // No theme-dispatch code lives in UITheme for this widget — instead we read
+    // `appliedTheme` directly here and forward the relevant values onto `bgPanel`/
+    // `label` each frame. An explicit `background` always wins over the theme (mirrors
+    // the old "if (!el.background)" gate in UITheme.applyTo).
+    const theme = this.appliedTheme
+
+    this.bgPanel.width  = this.width
+    this.bgPanel.height = this.height
+
+    const baseBg    = this.background        ?? theme?.panel         ?? null
+    const hoverBg   = this.hoverBackground   ?? theme?.buttonHover   ?? null
+    const pressedBg = this.pressedBackground ?? theme?.buttonPressed ?? null
+    const hoverTint   = theme ? theme.buttonHoverTint   : this.hoverTint
+    const pressedTint = theme ? theme.buttonPressedTint : this.pressedTint
+
+    // Sprite/colour background path (state-aware). Falls back to the built-in default
+    // look when neither an explicit background nor a theme is set.
+    const stateBg = this._isPressed ? pressedBg : this._isHovered ? hoverBg : baseBg
+    this.bgPanel.background = stateBg ?? baseBg ?? this._defaultBackground
+    // Tint only when the state had no explicit background/theme art of its own — a
+    // dedicated sprite for that state is used as-is, untinted.
+    this.bgPanel.tint = stateBg          ? null
+                       : this._isPressed ? pressedTint
+                       : this._isHovered ? hoverTint
+                       : null
+
+    this.label.width       = this.width
+    this.label.offset      = new Vector2(0, Math.max(0, (this.height - this.label.fontSize) / 2))
+    this.label.font        = theme?.fontFamily ?? this.font
+    this.label.color       = this.textColor ?? theme?.colors.text ?? this.label.color
+    this.label.bitmapFont  = this.bitmapFont ?? theme?.font ?? null
+    this.label.fontSize    = this.fontSize
   }
 
-  render(renderer: IRenderer, _interpolation: number): void {
-    const colors = this._isPressed ? this.pressed
-                 : this._isHovered ? this.hover
-                 : this.normal
-
-    const bounds = this.getBounds()
-
-    // Sprite/colour background path (state-aware). Falls through to ButtonColors when
-    // no background is assigned, so the existing look is preserved.
-    const stateBg = this._isPressed ? this.pressedBackground
-                  : this._isHovered ? this.hoverBackground
-                  : this.background
-    const bg = stateBg ?? this.background
-    if (bg) {
-      // Tint only when the state had no explicit background and we fell back to base.
-      const tint = stateBg            ? undefined
-                 : this._isPressed    ? this.pressedTint
-                 : this._isHovered    ? this.hoverTint
-                 : undefined
-      bg.draw(renderer, bounds, tint)
-    } else {
-      renderer.drawRect(bounds, colors.fill,   true)
-      renderer.drawRect(bounds, colors.border, false)
-    }
-
-    if (this.label) {
-      const pos = this.getPosition()
-      if (this.bitmapFont) {
-        const m  = this.bitmapFont.measureString(this.label)
-        const tx = pos.x + (bounds.width  - m.width)  / 2
-        const ty = pos.y + (bounds.height - m.height) / 2
-        this.bitmapFont.drawString(renderer, this.label, tx, ty)
-      } else {
-        renderer.drawText(
-          this.label,
-          { x: pos.x + bounds.width / 2, y: pos.y + bounds.height / 2 + this.fontSize * 0.375 },
-          { color: this.textColor ?? colors.text, size: this.fontSize, font: this.font, align: 'center' }
-        )
-      }
-    }
+  render(_renderer: IRenderer, _interpolation: number): void {
+    // no-op — bgPanel/label render themselves via the generic child-render walk.
   }
 }

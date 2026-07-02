@@ -36,15 +36,42 @@ export function computeNineSlice(
   const sCW = Math.max(0, src.width  - l - r)
   const sCH = Math.max(0, src.height - t - b)
 
+  // Round destination to integer pixels to prevent sub-pixel seams
+  const dx = Math.round(dst.x)
+  const dy = Math.round(dst.y)
+  const dw = Math.round(dst.width)
+  const dh = Math.round(dst.height)
+
+  let dl = Math.round(l)
+  let dt = Math.round(t)
+  let dr = Math.round(r)
+  let db = Math.round(b)
+
+  // When the destination is smaller than an axis's total inset span, the corners
+  // would otherwise keep their native size and spill past the destination bounds
+  // (e.g. a bar shorter than `top + bottom`). Scale that axis's insets down
+  // proportionally so the corners shrink to fit instead — the same approach CSS
+  // `border-image` uses for undersized boxes.
+  if (dl + dr > dw) {
+    const scale = dl + dr > 0 ? dw / (dl + dr) : 0
+    dl = Math.round(dl * scale)
+    dr = dw - dl
+  }
+  if (dt + db > dh) {
+    const scale = dt + db > 0 ? dh / (dt + db) : 0
+    dt = Math.round(dt * scale)
+    db = dh - dt
+  }
+
   // Destination band coordinates (middle clamped when dst < insets).
-  const dCW = Math.max(0, dst.width  - l - r)
-  const dCH = Math.max(0, dst.height - t - b)
-  const dxL = dst.x
-  const dxC = dst.x + l
-  const dxR = dst.x + dst.width  - r
-  const dyT = dst.y
-  const dyC = dst.y + t
-  const dyB = dst.y + dst.height - b
+  const dCW = Math.max(0, dw - dl - dr)
+  const dCH = Math.max(0, dh - dt - db)
+  const dxL = dx
+  const dxC = dx + dl
+  const dxR = dx + dw - dr
+  const dyT = dy
+  const dyC = dy + dt
+  const dyB = dy + dh - db
 
   const pairs: NineSlicePair[] = []
   const push = (
@@ -59,15 +86,15 @@ export function computeNineSlice(
   }
 
   // Corners.
-  push(sxL, syT, l, t, dxL, dyT, l, t)         // top-left
-  push(sxR, syT, r, t, dxR, dyT, r, t)         // top-right
-  push(sxL, syB, l, b, dxL, dyB, l, b)         // bottom-left
-  push(sxR, syB, r, b, dxR, dyB, r, b)         // bottom-right
+  push(sxL, syT, l, t, dxL, dyT, dl, dt)       // top-left
+  push(sxR, syT, r, t, dxR, dyT, dr, dt)       // top-right
+  push(sxL, syB, l, b, dxL, dyB, dl, db)       // bottom-left
+  push(sxR, syB, r, b, dxR, dyB, dr, db)       // bottom-right
   // Edges.
-  push(sxC, syT, sCW, t, dxC, dyT, dCW, t)     // top
-  push(sxC, syB, sCW, b, dxC, dyB, dCW, b)     // bottom
-  push(sxL, syC, l, sCH, dxL, dyC, l, dCH)     // left
-  push(sxR, syC, r, sCH, dxR, dyC, r, dCH)     // right
+  push(sxC, syT, sCW, t, dxC, dyT, dCW, dt)    // top
+  push(sxC, syB, sCW, b, dxC, dyB, dCW, db)    // bottom
+  push(sxL, syC, l, sCH, dxL, dyC, dl, dCH)    // left
+  push(sxR, syC, r, sCH, dxR, dyC, dr, dCH)    // right
   // Centre.
   push(sxC, syC, sCW, sCH, dxC, dyC, dCW, dCH)
 

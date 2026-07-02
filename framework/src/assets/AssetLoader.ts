@@ -1,5 +1,6 @@
 import { Texture } from './Texture'
 import type { IDebugger } from '@engine/debug'
+import type { IAssetLoader } from './IAssetLoader'
 
 /** Optional `FontFace` descriptors for {@link AssetLoader.loadFont}. */
 export interface FontFileOptions {
@@ -12,7 +13,7 @@ export interface FontFileOptions {
  *  the name plus an axis spec (e.g. `{ family: 'Inter', axis: 'wght@400;700' }`). */
 export type GoogleFont = string | { family: string; axis?: string }
 
-export class AssetLoader {
+export class AssetLoader implements IAssetLoader {
   private textureCache = new Map<string, Texture>()
   private audioCache   = new Map<string, AudioBuffer>()
   private audioCtx:      AudioContext | null = null

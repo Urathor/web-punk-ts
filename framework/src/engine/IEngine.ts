@@ -1,15 +1,15 @@
 import type { IRenderer      } from '@engine/renderer'
-import type { AssetLoader    } from '@engine/assets'
-import type { InputManager   } from '@engine/input'
-import type { ActionMap      } from '@engine/input'
-import type { Camera         } from '@engine/camera'
-import type { CollisionSystem } from '@engine/collision/CollisionSystem'
-import type { AudioManager   } from '@engine/audio'
-import type { UIManager      } from '@engine/ui'
-import type { EventEmitter   } from '@engine/events'
+import type { IAssetLoader   } from '@engine/assets'
+import type { IInputManager  } from '@engine/input'
+import type { IActionMap     } from '@engine/input'
+import type { ICamera        } from '@engine/camera'
+import type { ICollisionSystem } from '@engine/collision/ICollisionSystem'
+import type { IAudioManager  } from '@engine/audio'
+import type { IUIManager     } from '@engine/ui'
+import type { IEventEmitter  } from '@engine/events'
 import type { GameEventMap   } from '@engine/events'
 import type { IDebugger       } from '@engine/debug'
-import type { SaveManager    } from '@engine/save'
+import type { ISaveManager   } from '@engine/save'
 import type { IScene         } from './IScene'
 
 /**
@@ -19,15 +19,15 @@ import type { IScene         } from './IScene'
 export interface IEngine {
   readonly renderer:  IRenderer
   readonly debugger:  IDebugger | null
-  readonly assets:    AssetLoader
-  readonly input:     InputManager
-  readonly actions:   ActionMap
-  readonly camera:    Camera
-  readonly collision: CollisionSystem
-  readonly audio:     AudioManager
-  readonly ui:        UIManager
-  readonly events:    EventEmitter<GameEventMap>
-  readonly save:      SaveManager
+  readonly assets:    IAssetLoader
+  readonly input:     IInputManager
+  readonly actions:   IActionMap
+  readonly camera:    ICamera
+  readonly collision: ICollisionSystem
+  readonly audio:     IAudioManager
+  readonly ui:        IUIManager
+  readonly events:    IEventEmitter<GameEventMap>
+  readonly save:      ISaveManager
 
   /** Push a new scene on top of the stack (previous scene pauses). */
   pushScene(scene: IScene): void

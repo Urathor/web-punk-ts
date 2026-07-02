@@ -220,11 +220,13 @@ export class CanvasRenderer implements IRenderer {
 
   drawText(text: string, position: IPoint, style: TextStyle): void {
     if (DEBUG_OVERLAY_ENABLED) { this.incrementDrawCall() }
-    this.ctx.fillStyle = style.color
-    this.ctx.font      = `${style.size}px ${style.font ?? DEFAULT_FONT_FAMILY}`
-    this.ctx.textAlign = style.align ?? 'left'
+    this.ctx.fillStyle    = style.color
+    this.ctx.font         = `${style.size}px ${style.font ?? DEFAULT_FONT_FAMILY}`
+    this.ctx.textAlign    = style.align ?? 'left'
+    this.ctx.textBaseline = style.baseline ?? 'alphabetic'
     this.ctx.fillText(text, position.x, position.y)
-    this.ctx.textAlign = 'left'
+    this.ctx.textAlign    = 'left'
+    this.ctx.textBaseline = 'alphabetic'
   }
 
   pushTransform(offsetX: number, offsetY: number, scaleX = 1, scaleY = 1): void {

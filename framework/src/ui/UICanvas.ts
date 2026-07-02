@@ -32,14 +32,14 @@ export class UICanvas {
 
   private applyTheme(theme: UITheme | null): void {
     this.theme = theme
-    if (theme) for (const el of this.elements) theme.applyTo(el)
+    if (theme) for (const el of this.elements) theme.applyToSubtree(el)
   }
 
   addElement<T extends UIElement>(element: T): T {
     this.elements.push(element)
     this.elements.sort((a, b) => a.sortOrder - b.sortOrder)
     element.onAttach?.()
-    this.theme?.applyTo(element)
+    if (this.theme) this.theme.applyToSubtree(element)
     return element
   }
 
@@ -49,16 +49,24 @@ export class UICanvas {
 
   update(dt: number): void {
     if (!this.visible) return
-    for (const el of this.elements) {
-      if (el.visible) el.update?.(dt)
-    }
+    for (const el of this.elements) this.updateSubtree(el, dt)
+  }
+
+  private updateSubtree(el: UIElement, dt: number): void {
+    if (!el.visible) return
+    el.update?.(dt)
+    for (const child of el.children) this.updateSubtree(child, dt)
   }
 
   render(renderer: IRenderer, interpolation: number): void {
     if (!this.visible) return
     renderer.setDrawSmoothing(this.theme?.smoothing ?? false)
-    for (const el of this.elements) {
-      if (el.visible) el.render(renderer, interpolation)
-    }
+    for (const el of this.elements) this.renderSubtree(el, renderer, interpolation)
+  }
+
+  private renderSubtree(el: UIElement, renderer: IRenderer, interpolation: number): void {
+    if (!el.visible) return
+    el.render(renderer, interpolation)
+    for (const child of el.children) this.renderSubtree(child, renderer, interpolation)
   }
 }

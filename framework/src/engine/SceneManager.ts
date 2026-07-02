@@ -1,8 +1,9 @@
 import type { IScene  } from './IScene'
 import type { IEngine } from './IEngine'
+import type { ISceneManager } from './ISceneManager'
 import { LoadingScene  } from './LoadingScene'
 
-export class SceneManager {
+export class SceneManager implements ISceneManager {
   private readonly stack: IScene[] = []
 
   get activeScene(): IScene | undefined {

@@ -1,3 +1,5 @@
 export { InputManager }                              from './InputManager'
 export { ActionMap    }                              from './ActionMap'
+export type { IInputManager }                        from './IInputManager'
+export type { IActionMap    }                        from './IActionMap'
 export type { InputBinding, ActionDefinition }       from './ActionMap'

@@ -1,6 +1,13 @@
 import { UIElement       } from '../UIElement'
 import type { IRenderer  } from '@engine/renderer'
+import type { Tint       } from '../backgrounds'
 
+/**
+ * A filled/outlined rectangle, and the common choice as a container: use the
+ * inherited `addChild()` to attach other widgets to it. Children anchor relative to
+ * the panel's own bounds, so moving the panel (or changing its `width`/`height`)
+ * moves/re-flows the whole group with it.
+ */
 export class UIPanel extends UIElement {
   fillColor:    string  = '#222222'
   borderColor:  string  = '#666666'
@@ -9,11 +16,15 @@ export class UIPanel extends UIElement {
   showFill:     boolean = true
   /** TODO: rounded corners are not yet implemented in CanvasRenderer */
   cornerRadius: number  = 0
+  /** Colour overlay applied over `background` when set (ignored for the plain
+   *  `fillColor`/`borderColor` fallback). Lets composite widgets (e.g. `UIButton`)
+   *  drive hover/pressed feedback without swapping the background object itself. */
+  tint: Tint | null = null
 
   render(renderer: IRenderer, _interpolation: number): void {
     const bounds = this.getBounds()
     if (this.background) {
-      this.background.draw(renderer, bounds)
+      this.background.draw(renderer, bounds, this.tint ?? undefined)
       return
     }
     if (this.showFill)   renderer.drawRect(bounds, this.fillColor,   true)

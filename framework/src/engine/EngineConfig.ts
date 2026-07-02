@@ -5,7 +5,12 @@ export interface EngineConfig {
   /** The canvas element — needed by InputManager for mouse coordinate mapping. */
   canvas:   HTMLCanvasElement
   renderer: IRenderer
-  /** Show debug overlay. Automatically enabled in `import.meta.env.DEV`. */
+  /**
+   * Reserved for a future explicit debug-overlay toggle. Currently unused —
+   * the debug overlay is enabled automatically whenever
+   * `process.env.NODE_ENV !== 'production'` (see `Engine.ts`), regardless of
+   * this flag.
+   */
   debug?:   boolean
   /** Override the default localStorage save provider. */
   saveProvider?: ISaveProvider

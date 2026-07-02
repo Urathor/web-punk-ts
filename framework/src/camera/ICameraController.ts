@@ -1,6 +1,6 @@
-import type { Camera } from './Camera'
+import type { ICamera } from './ICamera'
 
 export interface ICameraController {
   /** Called each variable-timestep frame (dt in ms). Mutates camera.position. */
-  update(camera: Camera, dt: number): void
+  update(camera: ICamera, dt: number): void
 }

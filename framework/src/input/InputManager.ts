@@ -1,10 +1,11 @@
 import { Vector2             } from '@engine/math'
 import type { IRenderer      } from '@engine/renderer'
+import type { IInputManager  } from './IInputManager'
 
 // Internal state — not exported; only used within this file
 const enum KeyState { Up, JustPressed, Held, JustReleased }
 
-export class InputManager {
+export class InputManager implements IInputManager {
   private keyStates    = new Map<string, KeyState>()
   private mouseStates  = new Map<number, KeyState>()
   private _mousePos    = new Vector2(0, 0)

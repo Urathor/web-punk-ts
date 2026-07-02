@@ -7,9 +7,6 @@ import { NineSliceBackground   } from './backgrounds'
 import type { UIBackground, Tint, NineSliceInsets, NineSliceSource } from './backgrounds'
 import type { UIElement        } from './UIElement'
 import { UIPanel               } from './widgets/UIPanel'
-import { UIButton              } from './widgets/UIButton'
-import { UIProgressBar         } from './widgets/UIProgressBar'
-import { UIGrid                } from './widgets/UIGrid'
 import { UIText                } from './widgets/UIText'
 
 export interface UIThemeColors {
@@ -36,13 +33,10 @@ export interface UIThemeData {
   fontFamily?:    string
   colors?:        Partial<UIThemeColors>
   panel?:         UIThemeRegionData
-  buttonNormal?:  UIThemeRegionData
   buttonHover?:   UIThemeRegionData
   buttonPressed?: UIThemeRegionData
   progressTrack?: UIThemeRegionData
   progressFill?:  UIThemeRegionData
-  gridCell?:      UIThemeRegionData
-  gridSelected?:  UIThemeRegionData
 }
 
 export interface UIThemeDefaultOptions {
@@ -71,58 +65,49 @@ export class UITheme {
   colors: UIThemeColors = { text: '#ffffff', border: '#8899aa', fill: '#223044' }
 
   panel:         UIBackground | null = null
-  buttonNormal:  UIBackground | null = null
   buttonHover:   UIBackground | null = null
   buttonPressed: UIBackground | null = null
   buttonHoverTint:   Tint = { color: '#ffffff', strength: 0.15 }
   buttonPressedTint: Tint = { color: '#000000', strength: 0.20 }
   progressTrack: UIBackground | null = null
   progressFill:  UIBackground | null = null
-  gridCell:      UIBackground | null = null
-  gridSelected:  UIBackground | null = null
 
   /**
-   * Assign this theme's backgrounds/font to a widget. The only place that maps widget
-   * kinds → theme slots (via `instanceof`), keeping widgets free of any theme import.
+   * Assign this theme's background/font to a widget. Only understands the two real
+   * rendering primitives (`UIPanel`, `UIText`) — composite widgets (`UIButton`,
+   * `UIProgressBar`, `UIGrid`, or any user-defined composite) are never special-cased
+   * here. Instead, they read `this.appliedTheme` themselves (set below, on every
+   * themed element) in their own `update()`/`render()`, and forward relevant values to
+   * their own base-component children. This keeps `UITheme` decoupled from widget
+   * kinds beyond the two primitives, so a custom composite widget built from
+   * `UIPanel`/`UIText` children gets themed automatically with zero theme-side code.
+   *
    * Skips elements that opt out (`themed === false`) or already have an explicit
    * `background` — so an explicit background always wins over the theme.
    */
   applyTo(el: UIElement): void {
     if (el.themed === false) return
-
-    if (el instanceof UIButton) {
-      if (!el.background) {
-        el.background        = this.buttonNormal
-        el.hoverBackground   = this.buttonHover
-        el.pressedBackground = this.buttonPressed
-        el.hoverTint         = this.buttonHoverTint
-        el.pressedTint       = this.buttonPressedTint
-      }
-      if (this.font && !el.bitmapFont) el.bitmapFont = this.font
-      el.font       = this.fontFamily
-      el.textColor ??= this.colors.text
-      return
-    }
-
-    // For non-buttons, an explicit background wins.
+    el.appliedTheme = this
     if (el.background) return
 
     if (el instanceof UIPanel) {
       el.background = this.panel
-    } else if (el instanceof UIProgressBar) {
-      el.trackBackground = this.progressTrack
-      el.fillBackground  = this.progressFill
-    } else if (el instanceof UIGrid) {
-      el.cellBackground     = this.gridCell
-      el.selectedBackground = this.gridSelected
-      el.font      = this.fontFamily
-      el.textColor = this.colors.text
-      if (this.font && !el.bitmapFont) el.bitmapFont = this.font
     } else if (el instanceof UIText) {
       el.color = this.colors.text
       el.font  = this.fontFamily
       if (this.font && !el.bitmapFont) el.bitmapFont = this.font
     }
+  }
+
+  /**
+   * Applies this theme to `el`, then recursively to every descendant attached via
+   * `addChild`. Used by `UICanvas` when a themed canvas gains a new top-level element,
+   * and by `UIElement.addChild` to propagate an already-applied theme to late-added
+   * children.
+   */
+  applyToSubtree(el: UIElement): void {
+    this.applyTo(el)
+    for (const child of el.children) this.applyToSubtree(child)
   }
 
   /**
@@ -148,13 +133,10 @@ export class UITheme {
 
     const tiles: { fill: string; border: string; borderWidth?: number }[] = [
       { fill,                              border },                                   // 0 panel
-      { fill: blendHex(fill, '#ffffff', 0.08), border },                              // 1 button normal
-      { fill: blendHex(fill, '#ffffff', 0.20), border: blendHex(border, '#ffffff', 0.20) }, // 2 button hover
-      { fill: blendHex(fill, '#000000', 0.18), border },                              // 3 button pressed
-      { fill: blendHex(fill, '#000000', 0.28), border },                              // 4 progress track
-      { fill: accent, border: blendHex(accent, '#ffffff', 0.25) },                    // 5 progress fill
-      { fill: blendHex(fill, '#000000', 0.10), border },                              // 6 grid cell
-      { fill: 'transparent', border: accent, borderWidth: 2 },                        // 7 grid selected
+      { fill: blendHex(fill, '#ffffff', 0.20), border: blendHex(border, '#ffffff', 0.20) }, // 1 button hover
+      { fill: blendHex(fill, '#000000', 0.18), border },                              // 2 button pressed
+      { fill: blendHex(fill, '#000000', 0.28), border },                              // 3 progress track
+      { fill: accent, border: blendHex(accent, '#ffffff', 0.25) },                    // 4 progress fill
     ]
 
     let canvasEl: HTMLCanvasElement | null = null
@@ -173,13 +155,10 @@ export class UITheme {
       ({ image: sheet, srcRect: new Rect(0, i * TILE, TILE, TILE) })
 
     theme.panel         = new NineSliceBackground(region(0), insets)
-    theme.buttonNormal  = new NineSliceBackground(region(1), insets)
-    theme.buttonHover   = new NineSliceBackground(region(2), insets)
-    theme.buttonPressed = new NineSliceBackground(region(3), insets)
-    theme.progressTrack = new NineSliceBackground(region(4), insets)
-    theme.progressFill  = new NineSliceBackground(region(5), insets)
-    theme.gridCell      = new NineSliceBackground(region(6), insets)
-    theme.gridSelected  = new NineSliceBackground(region(7), insets)
+    theme.buttonHover   = new NineSliceBackground(region(1), insets)
+    theme.buttonPressed = new NineSliceBackground(region(2), insets)
+    theme.progressTrack = new NineSliceBackground(region(3), insets)
+    theme.progressFill  = new NineSliceBackground(region(4), insets)
     return theme
   }
 
@@ -206,13 +185,10 @@ export class UITheme {
       r ? new NineSliceBackground({ texture: tex, srcRect: new Rect(...r.rect) }, r.insets) : null
 
     theme.panel         = bg(data.panel)
-    theme.buttonNormal  = bg(data.buttonNormal)
     theme.buttonHover   = bg(data.buttonHover)
     theme.buttonPressed = bg(data.buttonPressed)
     theme.progressTrack = bg(data.progressTrack)
     theme.progressFill  = bg(data.progressFill)
-    theme.gridCell      = bg(data.gridCell)
-    theme.gridSelected  = bg(data.gridSelected)
     return theme
   }
 }

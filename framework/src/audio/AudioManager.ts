@@ -1,6 +1,7 @@
 import type { IDebugger } from '@engine/debug'
+import type { IAudioManager } from './IAudioManager'
 
-export class AudioManager {
+export class AudioManager implements IAudioManager {
   private ctx:              AudioContext | null = null
   private masterGain:       GainNode | null = null
   private sfxGain:          GainNode | null = null

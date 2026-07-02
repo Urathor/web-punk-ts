@@ -1,6 +1,6 @@
 import type { IDebugger, LogMessage } from './IDebugger'
 import type { BaseCollider          } from '@engine/collision'
-import type { Camera                } from '@engine/camera'
+import type { ICamera                } from '@engine/camera'
 import type { Entity                } from '@engine/entities'
 import { BoxCollider                } from '@engine/collision'
 import { Vector2                    } from '@engine/math'
@@ -74,7 +74,7 @@ export class Debugger implements IDebugger {
   handleMouseClick(
     mouse: Vector2,
     colliders: readonly BaseCollider[],
-    camera: Camera,
+    camera: ICamera,
     logicalWidth: number,
     logicalHeight: number
   ): boolean {

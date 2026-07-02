@@ -1,5 +1,5 @@
 import type { ICameraController }             from '../ICameraController'
-import type { Camera }                        from '../Camera'
+import type { ICamera }                       from '../ICamera'
 import { Transform }                          from '@engine/entities/components/Transform'
 import type { Entity }                        from '@engine/entities'
 
@@ -28,7 +28,7 @@ export class FollowController implements ICameraController {
     this.target = entity
   }
 
-  update(camera: Camera, dt: number): void {
+  update(camera: ICamera, dt: number): void {
     if (!this.target) return
 
     const transform = this.target.getComponent(Transform)

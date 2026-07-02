@@ -1,5 +1,5 @@
 import type { ICameraController             } from '../ICameraController'
-import type { Camera                        } from '../Camera'
+import type { ICamera                       } from '../ICamera'
 import type { Entity                        } from '@engine/entities'
 import { Transform                          } from '@engine/entities/components/Transform'
 
@@ -51,7 +51,7 @@ export class RoomController implements ICameraController {
     this._target = entity
   }
 
-  update(camera: Camera, dt: number): void {
+  update(camera: ICamera, dt: number): void {
     if (!this._target) return
 
     const transform = this._target.getComponent(Transform)
@@ -99,7 +99,7 @@ export class RoomController implements ICameraController {
    * Immediately snap the camera to a specific room without panning.
    * Use this for initial camera placement and after chest teleports.
    */
-  snapToRoom(index: number, camera: Camera): void {
+  snapToRoom(index: number, camera: ICamera): void {
     if (index < 0 || index >= this._rooms.length) return
     this._currentIndex = index
     this._panProgress  = 1
@@ -109,11 +109,11 @@ export class RoomController implements ICameraController {
     camera.position.y = this._centreY(r, camera)
   }
 
-  private _centreX(r: Room, camera: Camera): number {
+  private _centreX(r: Room, camera: ICamera): number {
     return r.x + r.width  / 2 - camera.viewport.width  / 2
   }
 
-  private _centreY(r: Room, camera: Camera): number {
+  private _centreY(r: Room, camera: ICamera): number {
     return r.y + r.height / 2 - camera.viewport.height / 2
   }
 
