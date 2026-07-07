@@ -1,6 +1,6 @@
 {
   "name": "create-webpunk",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Scaffold a new webpunk.ts game project.",
   "type": "module",
   "license": "MIT",

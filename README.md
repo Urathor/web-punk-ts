@@ -552,7 +552,7 @@ All coordinates and sizes are in **logical pixels** (your configured resolution,
 | `drawRect(rect, color, fill?)` | Draw a filled (default) or outlined rectangle |
 | `drawCircle(center, radius, color, fill?)` | Draw a filled (default) or outlined circle |
 | `drawLine(from, to, color, lineWidth?)` | Draw a line |
-| `drawText(text, position, style)` | Draw text. `style: { color, size, font?, align? }` — `align` is `'left'` \| `'center'` \| `'right'`, defaults to `'left'`. Pass `x: cx` with `align: 'center'` to anchor text to the screen centre. |
+| `drawText(text, position, style)` | Draw text. `style: { color, size, font?, align?, baseline? }` — `align` is `'left'` \| `'center'` \| `'right'`, defaults to `'left'`; `baseline` is `'alphabetic'` \| `'top'` \| `'middle'` \| `'bottom'`, defaults to `'alphabetic'` (the canvas default — `position.y` is the text's baseline). Pass `x: cx` with `align: 'center'` to anchor text to the screen centre, or `baseline: 'top'` when `position.y` should be the top of the glyphs (what `UIText` uses internally). |
 | `pushTransform(x, y, scaleX?, scaleY?)` | Save state and apply offset/scale |
 | `popTransform()` | Restore previous transform state |
 | `pushClip(rect)` / `popClip()` | Clip subsequent drawing to a logical-pixel rect (used by the camera viewport) |
@@ -875,15 +875,22 @@ position the text (`'left'`, `'center'`, or `'right'`) within it.
 | `borderWidth` | Border thickness |
 | `showFill` / `showBorder` | Toggle fill and border independently |
 
-**`UIProgressBar`** — a fill bar for health, loading, etc.
+**`UIProgressBar`** — a fill bar for health, loading, etc., composed of `trackPanel`/
+`fillPanel` (`UIPanel` children) plus an internal border overlay and an optional
+centered `label` (`UIText`, created on first `showLabel()` call).
 
-| Property | Description |
+| Member | Description |
 |---|---|
 | `value` | Fill ratio `0.0`–`1.0` |
 | `orientation` | `'horizontal'` (default) or `'vertical'` |
 | `reversed` | Fill from the far end (right-to-left / bottom-to-top) |
-| `fillColor` / `backgroundColor` / `borderColor` | Colours |
-| `showBorder` | Draw the border (default `true`) |
+| `fillColor` / `backgroundColor` / `borderColor` | Colours, used when no sprite background is set |
+| `showBorder` | Draw the border overlay (default `true`) |
+| `trackBackground` / `fillBackground` | Optional sprite/colour overrides for `trackPanel`/`fillPanel` — take priority over the theme's `progressTrack`/`progressFill` tokens |
+| `fillMode` | `'crop'` (default) or `'stretch'` — how `fillPanel`'s background fills as `value` changes. `'crop'` reveals a growing window of the full-size sprite (crisp nine-slice edges); `'stretch'` scales `fillPanel` itself to the fill size |
+| `trackPanel` / `fillPanel` | The underlying `UIPanel` children, exposed for direct customization |
+| `label` | `UIText \| null` — the optional caption, created by `showLabel()` |
+| `showLabel(text?)` | Creates (on first call) and shows a centered `label`, returning it for further configuration |
 
 **`UIButton`** — a clickable button, composed of a `UIPanel` background (`bgPanel`)
 and a `UIText` label. Pass `engine.input` to the constructor.

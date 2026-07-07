@@ -3,7 +3,7 @@
 Running release notes for **webpunk.ts** and the `create-webpunk` scaffolder.
 Newest entries first.
 
-## Unreleased
+## 0.2.6
 
 ### ⚠ Breaking Changes (UI widget composition)
 `UIButton`, `UIProgressBar`, and `UIGrid` were rebuilt as compositions of the base
@@ -121,6 +121,25 @@ See the widget-by-widget bullets below for full detail on each rewrite.
   permanently disabled the debug overlay for every consumer of the published
   `webpunk.ts` package, regardless of the consumer's own build mode. The strip
   decision is now correctly deferred to each consumer's own bundler.
+
+### Bug Fixes
+- **`UIProgressBar` crop-mode fill was invisible** — `fillMode: 'crop'` (the
+  default) drew the revealed fill via a parent-level `render()` override, which
+  `UICanvas`'s render walk always calls *before* any children — so the opaque
+  `trackPanel` (rendered right after, as the first child) painted straight over
+  it. Fixed by introducing an internal `ClippedPanel` (a `UIPanel` that clips its
+  own render to a local reveal rect) for `fillPanel`, so it now renders itself in
+  the correct z-order — after `trackPanel`, before the border overlay — via the
+  normal recursive child-render walk. No API changes.
+- **`UIText` vertical centering was off** — canvas text was always drawn with the
+  browser's default `textBaseline: 'alphabetic'`, while widgets like `UIButton`
+  and `UIProgressBar` computed their label's vertical offset assuming the text's
+  top-left corner (not its baseline) landed at that position, shifting labels
+  upward out of visual center. Added an optional `baseline` field to
+  `TextStyle`/`IRenderer.drawText`, and `UIText` now renders with `baseline:
+  'top'` so its box's top edge lines up with the actual top of the glyphs.
+  Other direct `renderer.drawText(...)` call sites (debug overlay, FPS counter,
+  scene-authored text) are unaffected — they keep the previous default.
 
 ## 0.2.3
 
