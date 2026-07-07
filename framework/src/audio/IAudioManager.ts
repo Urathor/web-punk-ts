@@ -14,4 +14,7 @@ export interface IAudioManager {
   playBGM(buffer: AudioBuffer, fadeMs?: number): void
   stopBGM(fadeMs?: number): void
   setBGMVolume(v: number): void
+
+  /** True while a BGM track is currently playing (set by `playBGM`/cleared by `stopBGM`). */
+  readonly isBgmPlaying: boolean
 }

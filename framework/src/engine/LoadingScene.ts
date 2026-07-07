@@ -11,10 +11,6 @@ export class LoadingScene implements IScene {
   private _displayedProgress = 0
 
   onEnter(_engine: IEngine): void {}
-  onExit():   void {}
-  onPause():  void {}
-  onResume(): void {}
-  fixedUpdate(_dt: number): void {}
 
   update(dt: number): void {
     // Exponentially smooth the bar toward the reported progress so discrete

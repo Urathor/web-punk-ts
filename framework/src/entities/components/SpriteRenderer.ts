@@ -3,6 +3,7 @@ import { Transform     } from './Transform'
 import type { Sprite   } from '@engine/animation/Sprite'
 import type { IRenderer } from '@engine/renderer'
 import { Rect           } from '@engine/math'
+import { AnimatorEvent, type AnimatorFrameEvent } from './Animator'
 
 export class SpriteRenderer extends BaseComponent {
   sprite:     Sprite | null = null
@@ -17,6 +18,14 @@ export class SpriteRenderer extends BaseComponent {
    * Set to false to stay pixel-perfect regardless of the global setting (e.g. UI icons).
    */
   antiAlias: boolean = true
+
+  /** Adopt whichever sprite an `Animator` on the same entity announces — decouples
+   *  the two components so neither needs a direct reference to the other's class. */
+  onAttach(): void {
+    this.entity.events.on(AnimatorEvent.Frame, (payload) => {
+      this.sprite = (payload as AnimatorFrameEvent).sprite
+    })
+  }
 
   render(renderer: IRenderer, _interpolation: number): void {
     if (!this.sprite) return

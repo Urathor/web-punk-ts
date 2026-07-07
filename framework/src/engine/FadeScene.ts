@@ -42,11 +42,6 @@ export class FadeScene implements IScene {
     this._engine = engine
   }
 
-  onExit():   void {}
-  onPause():  void {}
-  onResume(): void {}
-  fixedUpdate(_dt: number): void {}
-
   update(dt: number): void {
     this._tween.tick(dt)
   }

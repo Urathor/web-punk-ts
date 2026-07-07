@@ -2,9 +2,8 @@ import { Transform     } from '@engine/entities/components/Transform'
 import { Rect, Vector2 } from '@engine/math'
 import { BaseCollider  } from './BaseCollider'
 import { BoxCollider   } from './BoxCollider'
-import { CircleCollider } from './CircleCollider'
-import { testAABB, testCircleCircle, testCircleBox, inverseFace,
-         CollisionFace, CollisionResult } from './AABB'
+import { testAABB, inverseFace, CollisionFace } from './AABB'
+import { testColliderPair } from './ColliderPairTests'
 import type { TileMap  } from '@engine/tilemap/TileMap'
 import type { IEventEmitter } from '@engine/events'
 import type { GameEventMap } from '@engine/events'
@@ -15,6 +14,7 @@ export class CollisionSystem implements ICollisionSystem {
   private activePairs: Set<string>      = new Set()
   private tileMap:     TileMap | null   = null
   private bus:         IEventEmitter<GameEventMap> | null = null
+  private warnedNonBoxTileCollider = false
 
   setEventBus(bus: IEventEmitter<GameEventMap>): void {
     this.bus = bus
@@ -58,7 +58,7 @@ export class CollisionSystem implements ICollisionSystem {
         if (!b || !b.enabled || !b.entity.active) continue
         if (!a.shouldCollideWith(b) && !b.shouldCollideWith(a)) continue
 
-        const result  = this.testPair(a, b)
+        const result  = testColliderPair(a, b)
         const pairKey = `${Math.min(a.entity.id, b.entity.id)}-${Math.max(a.entity.id, b.entity.id)}`
 
         if (result.overlaps) {
@@ -108,9 +108,18 @@ export class CollisionSystem implements ICollisionSystem {
 
     // After entity–entity resolution, push every solid BoxCollider out of tiles.
     // This ensures entities that were displaced by resolveOverlap don't stay inside walls.
+    // Tile pushout is only implemented for box shapes (see resolveTileCollision) — warn
+    // once (dev builds only) instead of silently letting other shapes pass through walls.
     for (const c of this.colliders) {
-      if (c instanceof BoxCollider && !c.isTrigger && c.enabled && c.entity.active) {
-        this.resolveTileCollision(c)
+      if (c.isTrigger || !c.enabled || !c.entity.active) continue
+      if (c.shape === 'box') {
+        this.resolveTileCollision(c as BoxCollider)
+      } else if (this.tileMap && process.env.NODE_ENV !== 'production' && !this.warnedNonBoxTileCollider) {
+        this.warnedNonBoxTileCollider = true
+        console.warn(
+          `CollisionSystem: tile collision is only implemented for BoxCollider; "${c.shape}" ` +
+          'colliders will not collide with the tilemap.'
+        )
       }
     }
   }
@@ -173,42 +182,6 @@ export class CollisionSystem implements ICollisionSystem {
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
-
-  /**
-   * Dispatches to the correct intersection test for any pair of collider shapes.
-   * Penetration always pushes 'a' away from 'b'.
-   */
-  private testPair(a: BaseCollider, b: BaseCollider): CollisionResult {
-    if (a instanceof BoxCollider && b instanceof BoxCollider) {
-      return testAABB(a.getWorldBounds(), b.getWorldBounds())
-    }
-
-    if (a instanceof CircleCollider && b instanceof CircleCollider) {
-      return testCircleCircle(
-        a.getWorldCenter(), a.radius,
-        b.getWorldCenter(), b.radius
-      )
-    }
-
-    if (a instanceof CircleCollider && b instanceof BoxCollider) {
-      // testCircleBox returns penetration that pushes the circle (a) out of the box (b)
-      return testCircleBox(a.getWorldCenter(), a.radius, b.getWorldBounds())
-    }
-
-    if (a instanceof BoxCollider && b instanceof CircleCollider) {
-      // testCircleBox pushes circle out of box; invert so 'a' (box) is pushed out of 'b' (circle)
-      const r = testCircleBox(b.getWorldCenter(), b.radius, a.getWorldBounds())
-      if (!r.overlaps) return r
-      return {
-        overlaps:    true,
-        face:        inverseFace(r.face),
-        penetration: new Vector2(-r.penetration.x, -r.penetration.y)
-      }
-    }
-
-    // Fallback — should not reach with only Box and Circle types
-    return { overlaps: false, face: CollisionFace.None, penetration: new Vector2(0, 0) }
-  }
 
   private resolveOverlap(
     a: BaseCollider,

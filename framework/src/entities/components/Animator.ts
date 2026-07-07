@@ -1,6 +1,19 @@
 import { BaseComponent  } from '../BaseComponent'
-import { SpriteRenderer } from './SpriteRenderer'
 import type { AnimationClip } from '@engine/animation'
+
+/**
+ * Local entity-bus event emitted whenever the playing clip advances to a new
+ * frame. Decouples `Animator` from any concrete render component — anything
+ * on the same entity (typically `SpriteRenderer`) can subscribe instead of
+ * `Animator` reaching into a sibling component directly.
+ */
+export const AnimatorEvent = {
+  Frame: 'animator:frame',
+} as const
+
+export interface AnimatorFrameEvent {
+  sprite: AnimationClip['frames'][number]['sprite']
+}
 
 export class Animator extends BaseComponent {
   private clips:       Record<string, AnimationClip> = {}
@@ -18,7 +31,7 @@ export class Animator extends BaseComponent {
   play(clipName: string): void {
     const clip = this.clips[clipName]
     if (!clip) {
-      console.warn(`Animator: clip "${clipName}" not found`)
+      this.warnClipNotFound(clipName)
       return
     }
     if (this.currentClip?.name === clipName) return  // already playing
@@ -32,7 +45,10 @@ export class Animator extends BaseComponent {
   /** Play a clip once, ignoring its loop flag, then call onFinish (typically to return to idle). */
   playOnce(clipName: string, onFinish: () => void): void {
     const clip = this.clips[clipName]
-    if (!clip) return
+    if (!clip) {
+      this.warnClipNotFound(clipName)
+      return
+    }
     this.currentClip = { ...clip, loop: false }
     this.frameIndex  = 0
     this.elapsed     = 0
@@ -79,7 +95,12 @@ export class Animator extends BaseComponent {
   private syncSprite(): void {
     const frame = this.currentClip?.frames[this.frameIndex]
     if (!frame) return
-    const sr = this.entity.getComponent(SpriteRenderer)
-    if (sr) sr.sprite = frame.sprite
+    this.entity.events.emit(AnimatorEvent.Frame, { sprite: frame.sprite } satisfies AnimatorFrameEvent)
+  }
+
+  private warnClipNotFound(clipName: string): void {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`Animator: clip "${clipName}" not found`)
+    }
   }
 }

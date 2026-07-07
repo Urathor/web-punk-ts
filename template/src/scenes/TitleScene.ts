@@ -24,10 +24,8 @@ export class TitleScene implements IScene {
     engine.debugger?.logError('Local save slot empty - starting fresh.')
   }
 
-  onExit(): void { }
   onPause(): void { this._promptTween.cancel() }
   onResume(): void { this._promptTween.reset() }
-  fixedUpdate(_dt: number): void { }
 
   update(dt: number): void {
     this._promptTween.tick(dt)

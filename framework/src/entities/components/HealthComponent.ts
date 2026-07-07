@@ -1,5 +1,11 @@
 import { BaseComponent } from '../BaseComponent'
 
+/** Named event keys emitted on the owning entity's local event bus (`entity.events`). */
+export const HealthEvent = {
+  Died:    'health:died',
+  Damaged: 'health:damaged',
+} as const
+
 export class HealthComponent extends BaseComponent {
   maxHp: number
   hp:    number
@@ -16,9 +22,9 @@ export class HealthComponent extends BaseComponent {
   takeDamage(amount: number): void {
     this.hp = Math.max(0, this.hp - amount)
     if (this.isDead) {
-      this.entity.events.emit('health:died',    { entity: this.entity })
+      this.entity.events.emit(HealthEvent.Died,    { entity: this.entity })
     } else {
-      this.entity.events.emit('health:damaged', { amount, remaining: this.hp })
+      this.entity.events.emit(HealthEvent.Damaged, { amount, remaining: this.hp })
     }
   }
 

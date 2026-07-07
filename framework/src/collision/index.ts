@@ -8,5 +8,6 @@ export { testAABB, testCircleCircle,
          testCircleBox, inverseFace,
          CollisionFace                       } from './AABB'
 export type { CollisionResult               } from './AABB'
+export { testColliderPair                    } from './ColliderPairTests'
 export { CollisionSystem                    } from './CollisionSystem'
 export type { ICollisionSystem               } from './ICollisionSystem'

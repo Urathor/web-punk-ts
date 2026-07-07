@@ -1,4 +1,5 @@
 export { Transform       } from './Transform'
 export { SpriteRenderer  } from './SpriteRenderer'
-export { Animator        } from './Animator'
-export { HealthComponent } from './HealthComponent'
+export { Animator, AnimatorEvent } from './Animator'
+export type { AnimatorFrameEvent } from './Animator'
+export { HealthComponent, HealthEvent } from './HealthComponent'

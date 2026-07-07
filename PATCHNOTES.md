@@ -3,6 +3,83 @@
 Running release notes for **webpunk.ts** and the `create-webpunk` scaffolder.
 Newest entries first.
 
+## 0.2.7
+
+A SOLID/professional-standards remediation pass (see `docs/solid-review-tasklist.md`)
+focused on removing extensibility traps and hygiene issues in the collision system,
+tightening a handful of interfaces, splitting up `Engine`, and relaxing scene
+ergonomics. No public rendering/gameplay behavior changes — this release is almost
+entirely internal cleanup plus a few small, backwards-compatible API additions.
+
+### Collision System
+- **Collider shape polymorphism** — `CollisionSystem.testPair()` no longer branches
+  on `instanceof BoxCollider`/`instanceof CircleCollider`; pairs are now resolved via
+  a `shape`-keyed registry (`ColliderPairTests.ts`). Adding a third collider shape no
+  longer means hunting down three separate `instanceof` chains.
+- **No more silent non-collisions** — an unrecognized shape pair now logs a one-time
+  dev-gated warning instead of silently reporting "no overlap."
+- **`drawDebug(renderer)` and `containsPoint(point)` added to colliders** — fixes two
+  pre-existing bugs: circles rendered as squares in the debug overlay, and circles
+  couldn't be clicked/inspected in the debug inspector. Both now work correctly for
+  `CircleCollider`.
+- **Tile collision stays `BoxCollider`-only by design** — but now logs a one-time
+  dev-gated warning when a non-box collider coexists with an active tilemap, instead
+  of failing without explanation.
+
+### Interfaces
+- `IRenderer.getDebugStats?(): RendererDebugStats` — implemented by `CanvasRenderer`;
+  removes an `(this.renderer as any)` reach-in that used to live in `Engine`.
+- `Entity.getAllComponents(): readonly IComponent[]` — a supported way to enumerate
+  every component on an entity (used by the debug overlay's inspector; previously
+  required piercing the private `_components` field).
+- `IAudioManager.isBgmPlaying: boolean` — replaces an `(audio as any).currentBGMSource`
+  reach-in previously needed by the debug overlay.
+
+### Scene Lifecycle (`IScene`)
+- `onExit`, `onPause`, `onResume`, and `fixedUpdate` are now **optional** on `IScene`
+  (matching the existing `preload?` treatment) — only `onEnter`, `update`, and
+  `render` remain required. Non-breaking: existing scenes that implement all methods
+  keep working unchanged; new scenes can omit whichever lifecycle hooks they don't
+  need (e.g. a menu scene with no physics can skip `fixedUpdate` entirely).
+- `SceneManager` call sites updated to optional-chain these methods.
+- The `template/` starter scenes (`TitleScene`/`GameScene`) had their now-unneeded
+  empty lifecycle method bodies removed.
+
+### Engine Internals
+- `Engine` no longer carries loose FPS/frame-time counter fields or debug-hotkey
+  handling directly — that behavior moved to two new internal classes,
+  `FrameStats` (`framework/src/engine/`) and `DebugController`
+  (`framework/src/debug/`). This is purely an internal reorganization for
+  maintainability (SRP); `Engine`'s public surface is unchanged.
+- The debug-overlay's zero-cost production strip is preserved and verified: the
+  literal `process.env.NODE_ENV !== "production"` check still appears unresolved in
+  the built `dist/index.js`, so debug code is dead-code-eliminated from production
+  bundles exactly as before.
+
+### Quick Wins
+- Named-const hoisting for previously-magic strings: `HealthEvent.Died`/
+  `HealthEvent.Damaged` (was raw `'health:died'`/`'health:damaged'` string literals,
+  now exported from `webpunk.ts` for type-safe event listening), `PREVENTED_KEYS` in
+  `InputManager`, and `TILE_LAYER_TYPE`/`OBJECT_LAYER_TYPE`/`COLLIDABLE_PROPERTY_KEY`
+  in `TiledJsonLoader`.
+- `Animator.play()`/`playOnce()` now share a single dev-gated warning path for a
+  missing clip, instead of one warning unconditionally and the other failing
+  silently.
+- **`Animator` decoupled from `SpriteRenderer`** — `Animator` no longer imports or
+  directly mutates `SpriteRenderer`; it emits an `AnimatorEvent.Frame` event on the
+  entity's local event bus, which `SpriteRenderer` subscribes to on attach. No
+  consumer-facing change.
+- `Entity`'s internal ID counter can now be reset via the exported (test-only)
+  `resetEntityIdCounter()`, so tests no longer leak entity IDs across suites.
+
+### Tests
+- Added `MockAssetLoader` and `MockAudioProvider` to `framework/tests/mocks/`
+  alongside the existing `MockInputManager`.
+- Added 30 new tests covering `Animator` playback/looping/`playOnce`,
+  `AnimationClipLoader` JSON parsing, `TiledJsonLoader` and `TileMap`, and
+  `AudioManager` (via a fake Web Audio graph, since jsdom has no real
+  implementation) — bringing the suite to 219/219 passing across 29 files.
+
 ## 0.2.6
 
 ### ⚠ Breaking Changes (UI widget composition)

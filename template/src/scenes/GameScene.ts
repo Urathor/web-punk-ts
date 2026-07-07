@@ -95,10 +95,6 @@ export class GameScene implements IScene {
     engine.collision.setTileMap(null as never)
   }
 
-  onPause(): void { }
-  onResume(): void { }
-  fixedUpdate(_dt: number): void { }
-
   update(_dt: number): void {
     if (this._engine.actions.isActionPressed('cancel')) {
       // TODO: push a PauseScene or return to title

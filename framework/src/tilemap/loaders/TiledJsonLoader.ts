@@ -4,6 +4,12 @@ import type { TilesetData, TileLayerData,
               ObjectLayerData }                      from '../TileMap'
 import type { IAssetLoader }                         from '@engine/assets'
 
+/** Tiled layer `type` discriminants, as written by the Tiled map editor. */
+const TILE_LAYER_TYPE   = 'tilelayer'   as const
+const OBJECT_LAYER_TYPE = 'objectgroup' as const
+/** Custom Tiled property (on a tile layer) marking it as solid for tile collision. */
+const COLLIDABLE_PROPERTY_KEY = 'collidable'
+
 export class TiledJsonLoader implements ITileMapLoader {
   constructor(private assets: IAssetLoader) {}
 
@@ -59,7 +65,7 @@ export class TiledJsonLoader implements ITileMapLoader {
 
   private parseTileLayers(layers: TiledLayer[], mapWidth: number): TileLayerData[] {
     return layers
-      .filter((l): l is TiledTileLayer => l.type === 'tilelayer')
+      .filter((l): l is TiledTileLayer => l.type === TILE_LAYER_TYPE)
       .map(l => {
         const props = this.parseProperties(l.properties ?? [])
         return {
@@ -67,7 +73,7 @@ export class TiledJsonLoader implements ITileMapLoader {
           tiles:      this.flatTo2D(l.data, mapWidth),
           visible:    l.visible,
           opacity:    l.opacity,
-          collidable: props['collidable'] === true,
+          collidable: props[COLLIDABLE_PROPERTY_KEY] === true,
           properties: props
         }
       })
@@ -75,7 +81,7 @@ export class TiledJsonLoader implements ITileMapLoader {
 
   private parseObjectLayers(layers: TiledLayer[]): ObjectLayerData[] {
     return layers
-      .filter((l): l is TiledObjectLayer => l.type === 'objectgroup')
+      .filter((l): l is TiledObjectLayer => l.type === OBJECT_LAYER_TYPE)
       .map(l => ({
         name:    l.name,
         objects: l.objects.map(o => ({
@@ -131,12 +137,12 @@ interface TiledTileset {
 }
 type TiledLayer = TiledTileLayer | TiledObjectLayer
 interface TiledTileLayer {
-  type: 'tilelayer'; name: string
+  type: typeof TILE_LAYER_TYPE; name: string
   data: number[]; visible: boolean; opacity: number
   properties?: TiledProperty[]
 }
 interface TiledObjectLayer {
-  type: 'objectgroup'; name: string
+  type: typeof OBJECT_LAYER_TYPE; name: string
   objects: TiledObject[]
   properties?: TiledProperty[]
 }

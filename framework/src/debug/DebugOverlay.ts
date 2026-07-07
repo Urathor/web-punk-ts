@@ -4,10 +4,7 @@ import type { ICamera           } from '@engine/camera'
 import type { IInputManager     } from '@engine/input'
 import type { ActionMap         } from '@engine/input'
 import type { IAudioManager     } from '@engine/audio'
-import type { IComponent        } from '@engine/entities'
 import type { Entity            } from '@engine/entities'
-import { BoxCollider            } from '@engine/collision'
-import { CircleCollider         } from '@engine/collision'
 import { Rect                   } from '@engine/math'
 import type { Debugger          } from './Debugger'
 
@@ -87,14 +84,7 @@ export class DebugOverlay {
     for (const collider of colliders) {
       if (!collider.enabled || !collider.entity.active) continue
       const color = collider.isTrigger ? '#44aaff' : '#ff4444'
-
-      if (collider instanceof BoxCollider) {
-        renderer.drawRect(collider.getWorldBounds(), color, false)
-      } else if (collider instanceof CircleCollider) {
-        const c = collider.getWorldCenter()
-        const r = collider.radius
-        renderer.drawRect(new Rect(c.x - r, c.y - r, r * 2, r * 2), color, false)
-      }
+      collider.drawDebug(renderer, color)
     }
 
     renderer.popTransform()
@@ -112,8 +102,7 @@ export class DebugOverlay {
     const metricsPanelH = (dbg.showGraph ? graphH + 6 : 4) + 5 * 9
     const panelY = 4 + metricsPanelH + 4
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const components = (e as any)._components as IComponent[]
+    const components = e.getAllComponents()
     const panelH = 18 + components.length * 9
 
     renderer.drawRect(new Rect(x, panelY, 140, panelH), 'rgba(0,0,0,0.85)', true)
@@ -175,8 +164,7 @@ export class DebugOverlay {
 
     // Audio section
     renderer.drawText('Audio:', { x: x + 4, y: y + 27 }, { color: '#ffaaaa', size: 7 })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bgmName = (audio as any).currentBGMSource ? 'Playing' : 'None'
+    const bgmName = audio.isBgmPlaying ? 'Playing' : 'None'
     renderer.drawText(`BGM: ${bgmName}`,
       { x: x + 4, y: y + 36 }, { color: '#cccccc', size: 6 })
   }

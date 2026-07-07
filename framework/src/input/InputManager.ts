@@ -5,6 +5,11 @@ import type { IInputManager  } from './IInputManager'
 // Internal state — not exported; only used within this file
 const enum KeyState { Up, JustPressed, Held, JustReleased }
 
+/** Keys whose default browser action (page scroll, dev console) is suppressed. */
+const PREVENTED_KEYS = new Set([
+  'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Backquote'
+])
+
 export class InputManager implements IInputManager {
   private keyStates    = new Map<string, KeyState>()
   private mouseStates  = new Map<number, KeyState>()
@@ -86,7 +91,7 @@ export class InputManager implements IInputManager {
       this.keyStates.set(e.code, KeyState.JustPressed)
     }
     // Prevent arrow keys / space from scrolling the page; prevent backtick from opening browser console
-    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','Backquote'].includes(e.code)) {
+    if (PREVENTED_KEYS.has(e.code)) {
       e.preventDefault()
     }
   }

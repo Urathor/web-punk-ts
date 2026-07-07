@@ -16,7 +16,7 @@ export class SceneManager implements ISceneManager {
   }
 
   async push(scene: IScene, engine: IEngine): Promise<void> {
-    this.activeScene?.onPause()
+    this.activeScene?.onPause?.()
     if (scene.preload) {
       const loading = new LoadingScene()
       this.stack.push(loading)
@@ -25,7 +25,7 @@ export class SceneManager implements ISceneManager {
       } catch (err) {
         console.error('[SceneManager] preload failed:', err)
         this.stack.pop()  // remove loading scene
-        this.activeScene?.onResume()
+        this.activeScene?.onResume?.()
         return
       }
       this.stack.pop()
@@ -37,16 +37,16 @@ export class SceneManager implements ISceneManager {
 
   pop(engine: IEngine): void {
     const scene = this.stack.pop()
-    scene?.onExit()
+    scene?.onExit?.()
     if (scene) {
       engine.events.emit('scene:popped', { name: scene.constructor.name })
     }
-    this.activeScene?.onResume()
+    this.activeScene?.onResume?.()
   }
 
   async replace(scene: IScene, engine: IEngine): Promise<void> {
     const old = this.stack.pop()
-    old?.onExit()
+    old?.onExit?.()
     if (scene.preload) {
       const loading = new LoadingScene()
       this.stack.push(loading)
@@ -66,7 +66,7 @@ export class SceneManager implements ISceneManager {
 
   clear(): void {
     while (this.stack.length > 0) {
-      this.stack.pop()?.onExit()
+      this.stack.pop()?.onExit?.()
     }
   }
 
@@ -82,7 +82,7 @@ export class SceneManager implements ISceneManager {
     // Temporarily lift the top scene off the stack
     const topScene = this.stack.pop()!
     const old      = this.stack.pop()
-    old?.onExit()
+    old?.onExit?.()
     if (scene.preload) {
       try {
         await scene.preload(engine, () => {})

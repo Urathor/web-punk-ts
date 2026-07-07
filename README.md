@@ -25,6 +25,7 @@ A lightweight 2D canvas game framework for TypeScript, inspired by the classic [
   - [UI](#ui)
   - [Audio](#audio)
   - [Assets](#assets)
+  - [Debug Overlay](#debug-overlay)
   - [Events](#events)
   - [Save System](#save-system)
   - [Math](#math)
@@ -356,17 +357,20 @@ export class MyScene implements IScene {
   }
 
   onEnter(engine: IEngine): void { /* set up layers, entities */ }
-  onExit(): void                  { /* teardown */               }
-  onPause(): void                 { /* scene was pushed over */  }
-  onResume(): void                { /* scene was restored */     }
+  onExit?(): void                  { /* teardown */               }
+  onPause?(): void                 { /* scene was pushed over */  }
+  onResume?(): void                { /* scene was restored */     }
 
-  fixedUpdate(dt: number): void               { /* physics, 60Hz */ }
+  fixedUpdate?(dt: number): void               { /* physics, 60Hz */ }
   update(dt: number): void                    { /* input, state   */ }
   render(renderer: IRenderer, ip: number): void { /* HUD / overlays */ }
 }
 ```
 
-`preload` is optional. If omitted the scene enters immediately. `reportProgress` drives any loading bar you implement.
+`preload`, `onExit`, `onPause`, `onResume`, and `fixedUpdate` are all optional — omit
+any of them your scene doesn't need (e.g. a scene with no physics can skip
+`fixedUpdate` entirely). Only `onEnter`, `update`, and `render` are required.
+`preload`'s `reportProgress` drives any loading bar you implement.
 
 #### `FadeScene` — built-in fade transition
 
@@ -404,6 +408,7 @@ import {
 | `addComponent<T>(c: T): T` | Attach a component; sets `c.entity = this` |
 | `getComponent<T>(Type): T \| undefined` | Find first component of type |
 | `getComponents<T>(Type): T[]` | Find all components of type |
+| `getAllComponents(): readonly IComponent[]` | Every component attached to this entity, regardless of type |
 | `hasComponent<T>(Type): boolean` | Check existence |
 | `removeComponent<T>(Type): void` | Detach and call `onDetach` |
 | `destroy(): void` | Marks entity for removal |
@@ -456,6 +461,16 @@ hp.takeDamage(1)
 hp.heal(1)
 hp.ratio      // 0–1
 hp.isDead     // hp <= 0
+```
+
+`HealthComponent` emits on the entity's own local event bus (`entity.events`, not
+the global `engine.events`) — named by the exported `HealthEvent` consts:
+
+```typescript
+import { HealthEvent } from 'webpunk.ts'
+
+entity.events.on(HealthEvent.Damaged, ({ amount, remaining }) => { /* flash red */ })
+entity.events.on(HealthEvent.Died,    ({ entity })            => { /* play death anim */ })
 ```
 
 #### Custom components
@@ -649,6 +664,25 @@ onExit(): void {
   engine.collision.unregister(this._collider)
 }
 ```
+
+#### `CircleCollider`
+
+Same registration/callback API as `BoxCollider`, sized by a radius instead of
+width/height:
+
+```typescript
+const cc = this.addComponent(new CircleCollider())
+cc.radius    = 8                        // collider size in logical pixels (default 8)
+cc.offset    = new Vector2(0, 0)
+cc.layer     = CollisionLayer.Player
+cc.mask      = CollisionLayer.Enemy
+```
+
+Box↔box, circle↔circle, and circle↔box pairs are all fully supported (including
+debug-overlay rendering and click-to-inspect). Tile collision
+(`resolveTileCollision`) only supports `BoxCollider` — attempting it with a
+`CircleCollider` present alongside an active tilemap logs a one-time dev warning
+rather than failing silently.
 
 #### Tile collision
 
@@ -1206,6 +1240,7 @@ engine.audio.playBGM(this._bgm, 500)        // 500ms fade-in
 engine.audio.stopBGM(300)                   // 300ms fade-out
 engine.audio.setSFXVolume(0.5)              // global SFX volume
 engine.audio.setBGMVolume(0.7)              // global BGM volume
+engine.audio.isBgmPlaying                   // true while a BGM track is playing
 ```
 
 ---
@@ -1254,6 +1289,47 @@ a `UIText`/`UIButton` `font` property, or a `UITheme`'s `fontFamily`. The
 framework's default theme uses **Science Gothic** with a `sans-serif` fallback
 (`DEFAULT_FONT_FAMILY`); scaffolded projects ship the font in `public/fonts/` and load
 it in `main.ts`. Font loading is a no-op in headless environments (no `FontFace`/`document.fonts`).
+
+---
+
+### Debug Overlay
+
+```typescript
+import type { IDebugger } from 'webpunk.ts'
+```
+
+Accessed via `engine.debugger` (`IDebugger | null`). It's automatically constructed
+whenever the build isn't a production build (`process.env.NODE_ENV !== 'production'`)
+and is `null` — with zero runtime cost — in production builds. Log from game code
+without checking for `null` every time by using optional chaining:
+
+```typescript
+engine.debugger?.log('checkpoint reached')
+engine.debugger?.logWarning('asset missing, using fallback')
+engine.debugger?.logError('save failed')
+```
+
+| Member | Description |
+|---|---|
+| `enabled: boolean` | `true` when the overlay was constructed (i.e. non-production build) |
+| `log(message)` | Append an info-level line to the message log panel |
+| `logWarning(message)` | Append a warn-level line (shown highlighted) |
+| `logError(message)` | Append an error-level line (shown highlighted) |
+
+At runtime, players/developers toggle the overlay itself with hotkeys (no code
+required):
+
+| Key | Effect |
+|---|---|
+| <kbd>\`</kbd> (backtick) | Toggle the debug overlay on/off |
+| <kbd>L</kbd> | Expand/collapse the message log panel |
+| Left-click | Inspect whatever entity/collider is under the cursor |
+
+When visible, the overlay draws six panels: FPS/frame-time graph, collider
+outlines (works for both `BoxCollider` and `CircleCollider`), an entity
+inspector (click any collider to populate it), a live event-log monitor,
+a system panel (input/audio/camera state), and the message log described above.
+With the overlay collapsed, a minimal FPS counter still renders in the corner.
 
 ---
 

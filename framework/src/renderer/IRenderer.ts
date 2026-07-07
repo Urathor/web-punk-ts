@@ -99,4 +99,19 @@ export interface IRenderer {
 
   /** Toggle debug drawing mode (diverts draw call counting to debug stats). */
   setDebugMode?(enabled: boolean): void
+
+  /**
+   * Optional dev-only draw-call telemetry for the debug overlay. Implementations
+   * that don't track draw calls (or aren't built with counting support) may omit
+   * this — callers should treat a missing implementation the same as zero calls.
+   */
+  getDebugStats?(): RendererDebugStats
+}
+
+/** Draw-call counters reported by {@link IRenderer.getDebugStats}. */
+export interface RendererDebugStats {
+  /** Draw calls issued by game code (outside `setDebugMode(true)`). */
+  gameDrawCalls:  number
+  /** Draw calls issued while `setDebugMode(true)` was active (debug overlay itself). */
+  debugDrawCalls: number
 }

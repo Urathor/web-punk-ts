@@ -15,6 +15,10 @@ export class AudioManager implements IAudioManager {
     this.debugger = dbg
   }
 
+  get isBgmPlaying(): boolean {
+    return this.currentBGMSource !== null
+  }
+
   constructor() {
     // Unlock AudioContext on first user interaction (browser autoplay policy).
     const unlock = (): void => {

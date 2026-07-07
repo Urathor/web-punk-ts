@@ -1,4 +1,4 @@
-import type { IRenderer, IPoint, IRect, TextStyle, ScaleFilter } from './IRenderer'
+import type { IRenderer, IPoint, IRect, TextStyle, ScaleFilter, RendererDebugStats } from './IRenderer'
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT, DEFAULT_FONT_FAMILY } from '@engine/constants'
 
 /** How the logical buffer is scaled to fill the browser window. */
@@ -67,6 +67,13 @@ export class CanvasRenderer implements IRenderer {
 
   setDebugMode(enabled: boolean): void {
     this._debugMode = enabled
+  }
+
+  getDebugStats(): RendererDebugStats {
+    return {
+      gameDrawCalls:  this._gameDrawCallsLast,
+      debugDrawCalls: this._debugDrawCallsLast,
+    }
   }
 
   private incrementDrawCall(): void {

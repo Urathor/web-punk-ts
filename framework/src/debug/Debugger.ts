@@ -2,7 +2,6 @@ import type { IDebugger, LogMessage } from './IDebugger'
 import type { BaseCollider          } from '@engine/collision'
 import type { ICamera                } from '@engine/camera'
 import type { Entity                } from '@engine/entities'
-import { BoxCollider                } from '@engine/collision'
 import { Vector2                    } from '@engine/math'
 
 export class Debugger implements IDebugger {
@@ -102,7 +101,7 @@ export class Debugger implements IDebugger {
     const worldMouse = mouse.add(camera.position)
     for (const collider of colliders) {
       if (!collider.enabled || !collider.entity.active) continue
-      if (collider instanceof BoxCollider && collider.getWorldBounds().contains(worldMouse)) {
+      if (collider.containsPoint(worldMouse)) {
         this.inspectEntity(collider.entity)
         return true
       }

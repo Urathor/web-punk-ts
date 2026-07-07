@@ -8,6 +8,12 @@ type Constructor<T> = new (...args: any[]) => T
 
 let _nextId = 0
 
+/** Reset the auto-increment id counter used for {@link Entity.id}. Test-only —
+ *  keeps ids deterministic/isolated between test cases; never call at runtime. */
+export function resetEntityIdCounter(): void {
+  _nextId = 0
+}
+
 export class Entity {
   readonly id: number = _nextId++
   name:    string
@@ -33,6 +39,11 @@ export class Entity {
 
   getComponent<T extends IComponent>(type: Constructor<T>): T | undefined {
     return this._components.find((c): c is T => c instanceof type)
+  }
+
+  /** Every component currently attached to this entity, in attach order. */
+  getAllComponents(): readonly IComponent[] {
+    return this._components
   }
 
   getComponents<T extends IComponent>(type: Constructor<T>): T[] {
