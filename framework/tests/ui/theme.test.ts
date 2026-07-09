@@ -1,4 +1,4 @@
-import { UITheme, UIPanel, UICanvas, UIManager, UIText, UIButton, UIElement, solid } from '@engine/ui'
+import { UITheme, ThemeSkin, UIPanel, UICanvas, UIManager, UIText, UIButton, UIElement, solid } from '@engine/ui'
 import type { IRenderer } from '@engine/renderer'
 import { DEFAULT_FONT_FAMILY } from '@engine/constants'
 import { MockRenderer } from '../mocks/MockRenderer'
@@ -99,6 +99,32 @@ describe('theme text styling', () => {
     t.applyTo(txt)
     expect(txt.color).toBe('#abcdef')
     expect(txt.font).toBe('Courier New')
+  })
+
+  it('skin.textColor takes precedence over theme.colors.text', () => {
+    const t = new UITheme()
+    t.colors.text = '#ff0000'
+    t.skins.default = new ThemeSkin({ textColor: '#00ff00' })
+    const txt = new UIText()
+    t.applyTo(txt)
+    expect(txt.color).toBe('#00ff00')
+  })
+
+  it('skin.textColor drives UIButton label color over theme.colors.text', () => {
+    const t = new UITheme()
+    t.colors.text = '#ff0000'
+    t.addSkin('special', new ThemeSkin({ textColor: '#0000ff' }))
+    const r      = new MockRenderer()
+    const mgr    = new UIManager()
+    const canvas = mgr.add(new UICanvas('hud'))
+    canvas.setTheme(t)
+    const btn = canvas.addElement(new UIButton(new MockInputManager()))
+    btn.skinName = 'special'
+    btn.width = 40; btn.height = 12; btn.label.text = 'OK'
+    canvas.update(0)
+    canvas.render(r, 0)
+    const call  = r.drawCalls.find(c => c.type === 'text')
+    expect((call?.args[2] as { color?: string }).color).toBe('#0000ff')
   })
 })
 

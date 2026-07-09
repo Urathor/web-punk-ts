@@ -112,7 +112,7 @@ export class UITheme {
     if (el instanceof UIPanel) {
       el.background = skin.panel
     } else if (el instanceof UIText) {
-      el.color = this.colors.text
+      el.color = skin.textColor ?? this.colors.text
       el.font  = skin.fontFamily ?? this.fontFamily
       const font = skin.font ?? this.font
       if (font && !el.bitmapFont) el.bitmapFont = font

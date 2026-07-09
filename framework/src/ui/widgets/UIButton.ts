@@ -110,7 +110,7 @@ export class UIButton extends UIElement {
     this.label.width       = this.width
     this.label.offset      = new Vector2(0, Math.max(0, (this.height - this.label.fontSize) / 2))
     this.label.font        = skin?.fontFamily ?? theme?.fontFamily ?? this.font
-    this.label.color       = this.textColor ?? theme?.colors.text ?? this.label.color
+    this.label.color       = this.textColor ?? skin?.textColor ?? theme?.colors.text ?? this.label.color
     this.label.bitmapFont  = this.bitmapFont ?? skin?.font ?? theme?.font ?? null
     this.label.fontSize    = this.fontSize
   }

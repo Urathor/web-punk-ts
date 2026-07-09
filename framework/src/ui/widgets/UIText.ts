@@ -84,7 +84,7 @@ export class UIText extends UIElement {
         const width = this.bitmapFont.measureString(this.text, scale).width
         drawX = this.textAlign === 'center' ? anchorX - width / 2 : anchorX - width
       }
-      this.bitmapFont.drawString(renderer, this.text, drawX, bounds.y, scale)
+      this.bitmapFont.drawString(renderer, this.text, drawX, bounds.y, scale, this.color)
     } else {
       renderer.drawText(this.text, { x: anchorX, y: bounds.y }, {
         color: this.color, size: this.effectiveFontSize, font: this.font, align: this.textAlign,

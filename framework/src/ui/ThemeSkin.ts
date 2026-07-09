@@ -32,6 +32,9 @@ export interface ThemeSkinOptions {
    *  baseline default for any skin that doesn't set these. */
   font?:          BitmapFont | null
   fontFamily?:    string
+  /** Optional per-skin text colour override. When `null` (the default), falls back to
+   *  `UITheme.colors.text`. */
+  textColor?:     string | null
   generate?:      ThemeSkinGenerateOptions
 }
 
@@ -55,6 +58,8 @@ export class ThemeSkin {
   progressFill:  UIBackground
   font:          BitmapFont | null
   fontFamily:    string | null
+  /** Per-skin text colour. `null` means inherit from `UITheme.colors.text`. */
+  textColor:     string | null
 
   constructor(opts: ThemeSkinOptions = {}) {
     const gen    = opts.generate ?? {}
@@ -97,5 +102,6 @@ export class ThemeSkin {
     })
     this.font       = opts.font       ?? null
     this.fontFamily = opts.fontFamily ?? null
+    this.textColor  = opts.textColor  ?? null
   }
 }

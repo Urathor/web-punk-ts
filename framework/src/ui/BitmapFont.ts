@@ -2,6 +2,7 @@ import type { Texture     } from '@engine/assets/Texture'
 import type { AssetLoader } from '@engine/assets'
 import type { IRenderer   } from '@engine/renderer'
 import { Rect              } from '@engine/math'
+import { bakeTint          } from './tint'
 
 export interface BitmapFontData {
   texture:     Texture
@@ -19,10 +20,20 @@ export class BitmapFont {
     this.data = data
   }
 
-  drawString(renderer: IRenderer, text: string, x: number, y: number, scale = 1): void {
+  drawString(renderer: IRenderer, text: string, x: number, y: number, scale = 1, color = '#ffffff'): void {
     const { texture, charWidth, charHeight, chars, charsPerRow } = this.data
-    let cursorX = x
 
+    // Resolve source image: bake a tinted copy of the full texture when a non-white
+    // colour is requested (the tint overlays the colour onto each glyph's pixels,
+    // which works correctly for white-on-transparent bitmap font sheets). The baked
+    // canvas is cached by bakeTint so the cost is paid only once per unique colour.
+    let sourceImage = texture.image
+    if (color !== '#ffffff') {
+      const fullSprite = { texture, srcRect: new Rect(0, 0, texture.width, texture.height) }
+      sourceImage = bakeTint(fullSprite, { color, strength: 1 }).image as HTMLImageElement
+    }
+
+    let cursorX = x
     for (const char of text) {
       const idx = chars.indexOf(char)
       if (idx === -1) { cursorX += charWidth * scale; continue }
@@ -32,7 +43,7 @@ export class BitmapFont {
       const srcRect = new Rect(col * charWidth, row * charHeight, charWidth, charHeight)
       const dstRect = new Rect(cursorX, y, charWidth * scale, charHeight * scale)
 
-      renderer.drawImage(texture.image, srcRect, dstRect)
+      renderer.drawImage(sourceImage, srcRect, dstRect)
       cursorX += charWidth * scale
     }
   }

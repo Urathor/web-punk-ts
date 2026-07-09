@@ -49,13 +49,31 @@ export class GameScene implements IScene {
     // `createDefault()` uses internally, callable directly for custom variants.
     // Any field left unset (e.g. no dedicated buttonDown here) is generated from
     // ThemeSkin's own `generate` colours instead.
-    theme.addSkin('danger', new ThemeSkin({
-      panel:       generateNineSliceSprite({ fill: '#5a2020', border: '#7a3030', radius: 6, borderWidth: 2 }),
-      buttonHover: generateNineSliceSprite({ fill: '#7a3030', border: '#9a4040', radius: 6, borderWidth: 2 }),
+    theme.addSkin('green', new ThemeSkin({
+      panel: generateNineSliceSprite({ fill: '#08b36b', border: '#04774b' , radius: 11, borderWidth: 3 }),
+      button: generateNineSliceSprite({ fill: '#08b36b', border: '#04774b' , radius: 11, borderWidth: 3 }),
+      buttonHover: generateNineSliceSprite({ fill: '#5bf8af', border: '#5bf8af' , radius: 11, borderWidth: 3 }),
+      buttonDown: generateNineSliceSprite({ fill: '#04774b', border: '#04774b' , radius: 11, borderWidth: 3 }),
+      progressTrack: generateNineSliceSprite({ fill: '#9b9b9b', border: '#e2e2e2' , radius: 11, borderWidth: 3 }),
+      progressFill: generateNineSliceSprite({ fill: '#08b36b', border: '#04774b' , radius: 11, borderWidth: 3 })
+    }))
+    theme.addSkin('red', new ThemeSkin({
+      panel: generateNineSliceSprite({ fill: '#f5322b', border: '#8f2320' , radius: 11, borderWidth: 3 }),
+      button: generateNineSliceSprite({ fill: '#f5322b', border: '#8f2320' , radius: 11, borderWidth: 3 }),
+      buttonHover: generateNineSliceSprite({ fill: '#f8615b', border: '#f8615b' , radius: 11, borderWidth: 3 }),
+      buttonDown: generateNineSliceSprite({ fill: '#8f2320', border: '#8f2320' , radius: 11, borderWidth: 3 }),
+      progressTrack: generateNineSliceSprite({ fill: '#9b9b9b', border: '#e2e2e2' , radius: 11, borderWidth: 3 }),
+      progressFill: generateNineSliceSprite({ fill: '#f5322b', border: '#e2e2e2' , radius: 11, borderWidth: 3 })
     }))
     theme.addSkin('blue', new ThemeSkin({
-      panel:       generateNineSliceSprite({ fill: '#0332a7', border: '#5072bd', radius: 6, borderWidth: 2 }),
+      panel: generateNineSliceSprite({ fill: '#0332a7', border: '#5072bd' , radius: 11, borderWidth: 3 }),
+      button: generateNineSliceSprite({ fill: '#0332a7', border: '#5072bd' , radius: 11, borderWidth: 3 }),
+      buttonHover: generateNineSliceSprite({ fill: '#4c79eb', border: '#4c79eb' , radius: 11, borderWidth: 3 }),
+      buttonDown: generateNineSliceSprite({ fill: '#1f3f8f', border: '#1f3f8f' , radius: 11, borderWidth: 3 }),
+      progressTrack: generateNineSliceSprite({ fill: '#9b9b9b', border: '#e2e2e2' , radius: 11, borderWidth: 3 }),
+      progressFill: generateNineSliceSprite({ fill: '#0332a7', border: '#5072bd' , radius: 11, borderWidth: 3 })
     }))
+
     // A skin's `panel` can also be real sprite art instead of procedural tiles —
     // block_blue.png (loaded in `preload`) as a nine-slice: the 16px border/corner
     // rivets stay crisp while the flat middle stretches to fit each panel's size.
@@ -78,8 +96,8 @@ export class GameScene implements IScene {
     const panel = new UIPanel()
     panel.skinName = 'blue'
     panel.anchor = Anchor.Center
-    panel.width = 175
-    panel.height = 70
+    panel.width = 200
+    panel.height = 100
     panel.offset = new Vector2(-panel.width / 2, -panel.height / 2)
     hud.addElement(panel)
 
@@ -88,15 +106,17 @@ export class GameScene implements IScene {
     title.text = 'Themed HUD'
     title.textAlign = 'center' as TextAlign
     title.width = 150
-    title.height = 8
-    title.offset = new Vector2(-75, 16)
+    title.height = 12
+    title.offset = new Vector2(-75, 12)
+    title.color = '#e0e400';
 
     // Themed progress bar (sprite track + fill come from the theme).
     const health = panel.addChild(new UIProgressBar())
+    health.skinName = 'red'
     health.anchor = Anchor.Center
     health.width = 150
-    health.height = 8
-    health.offset = new Vector2(-health.width / 2, -12)
+    health.height = 24
+    health.offset = new Vector2(-health.width / 2, -18)
     health.value = 0.6
     health.showBorder = false;
 
@@ -106,14 +126,14 @@ export class GameScene implements IScene {
     const buttonRow = panel.addChild(new UIGrid())
     buttonRow.mode = 'row'
     buttonRow.padding = 6
-    buttonRow.anchor = Anchor.MiddleLeft
-    buttonRow.offset = new Vector2(16, 8)
+    buttonRow.anchor = Anchor.Center
+    buttonRow.offset = new Vector2(-((66 + 6) * 2) / 2, 12)
 
     const heal = buttonRow.addChild(new UIButton(engine.input))
-    heal.skinName = 'block'
+    heal.skinName = 'green'
     heal.label.text = 'Heal 10%'
     heal.width = 66
-    heal.height = 16
+    heal.height = 24
     heal.onClick = () => { health.value = Math.min(1, health.value + 0.1) }
 
     // Interactive themed button, opted into the 'danger' skin registered above
@@ -121,10 +141,10 @@ export class GameScene implements IScene {
     // so `skinName` can be (re)assigned any time, unlike a plain UIPanel/UIText
     // (which resolves its background once, when the theme is first applied).
     const damage = buttonRow.addChild(new UIButton(engine.input))
-    damage.skinName = 'danger'
+    damage.skinName = 'red'
     damage.label.text = 'Damage 10%'
     damage.width = 66
-    damage.height = 16
+    damage.height = 24
     damage.onClick = () => { health.value = Math.max(0, health.value - 0.1) }
     // -------------------------------------------------------------------------
   }

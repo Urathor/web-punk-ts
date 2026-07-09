@@ -43,6 +43,11 @@ describe('ThemeSkin — procedural defaults', () => {
     expect(skin.font).toBeNull()
     expect(skin.fontFamily).toBeNull()
   })
+
+  it('textColor defaults to null (inherit from theme.colors.text)', () => {
+    const skin = new ThemeSkin()
+    expect(skin.textColor).toBeNull()
+  })
 })
 
 describe('ThemeSkin — explicit overrides', () => {
@@ -69,6 +74,11 @@ describe('ThemeSkin — explicit overrides', () => {
   it('accepts a per-skin fontFamily override', () => {
     const skin = new ThemeSkin({ fontFamily: 'Comic Sans MS' })
     expect(skin.fontFamily).toBe('Comic Sans MS')
+  })
+
+  it('accepts a per-skin textColor override', () => {
+    const skin = new ThemeSkin({ textColor: '#ff9900' })
+    expect(skin.textColor).toBe('#ff9900')
   })
 
   it('reuses the supplied panel/button sprite for buttonHover/buttonDown when no dedicated art is given (one-sprite skin — UIButton tints it instead of swapping in a mismatched tile)', () => {
