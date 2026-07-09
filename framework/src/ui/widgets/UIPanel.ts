@@ -23,6 +23,16 @@ export class UIPanel extends UIElement {
 
   render(renderer: IRenderer, _interpolation: number): void {
     const bounds = this.getBounds()
+
+    // No theme-dispatch code lives in UITheme for this widget — instead we read
+    // `appliedTheme` directly here, resolve our own skin via `getSkin(this.skinName)`,
+    // and forward the relevant values onto `bgPanel`/`label` each frame. An explicit
+    // `background` always wins over the theme (mirrors the old "if (!el.background)"
+    // gate in UITheme.applyTo).
+    const theme = this.appliedTheme
+    const skin  = theme?.getSkin(this.skinName) ?? null
+    this.background = this.background ?? skin?.panel ?? null
+
     if (this.background) {
       // Push this panel's own flags onto whatever background is assigned — so
       // showFill/showBorder take effect regardless of the background strategy —

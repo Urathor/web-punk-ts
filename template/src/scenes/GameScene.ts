@@ -50,10 +50,12 @@ export class GameScene implements IScene {
     // Any field left unset (e.g. no dedicated buttonDown here) is generated from
     // ThemeSkin's own `generate` colours instead.
     theme.addSkin('danger', new ThemeSkin({
-      panel:       generateNineSliceSprite({ fill: '#5a2020', border: '#7a3030', radius: 6 }),
-      buttonHover: generateNineSliceSprite({ fill: '#7a3030', border: '#9a4040', radius: 6 }),
+      panel:       generateNineSliceSprite({ fill: '#5a2020', border: '#7a3030', radius: 6, borderWidth: 2 }),
+      buttonHover: generateNineSliceSprite({ fill: '#7a3030', border: '#9a4040', radius: 6, borderWidth: 2 }),
     }))
-
+    theme.addSkin('blue', new ThemeSkin({
+      panel:       generateNineSliceSprite({ fill: '#0332a7', border: '#5072bd', radius: 6, borderWidth: 2 }),
+    }))
     // A skin's `panel` can also be real sprite art instead of procedural tiles —
     // block_blue.png (loaded in `preload`) as a nine-slice: the 16px border/corner
     // rivets stay crisp while the flat middle stretches to fit each panel's size.
@@ -74,6 +76,7 @@ export class GameScene implements IScene {
     // moment the theme is applied, unlike UIButton/UIProgressBar which re-read
     // their skin every frame).
     const panel = new UIPanel()
+    panel.skinName = 'blue'
     panel.anchor = Anchor.Center
     panel.width = 175
     panel.height = 70
