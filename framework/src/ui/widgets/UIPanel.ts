@@ -24,6 +24,12 @@ export class UIPanel extends UIElement {
   render(renderer: IRenderer, _interpolation: number): void {
     const bounds = this.getBounds()
     if (this.background) {
+      // Push this panel's own flags onto whatever background is assigned — so
+      // showFill/showBorder take effect regardless of the background strategy —
+      // without UIPanel needing to know the background's concrete type. A sprite
+      // background (no separate fill/border layer) simply ignores these.
+      this.background.showFill   = this.showFill
+      this.background.showBorder = this.showBorder
       this.background.draw(renderer, bounds, this.tint ?? undefined)
       return
     }

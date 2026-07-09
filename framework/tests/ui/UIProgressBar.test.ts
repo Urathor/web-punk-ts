@@ -3,8 +3,8 @@ import { MockRenderer } from '../mocks/MockRenderer'
 
 function makeTheme(): UITheme {
   const t = new UITheme()
-  t.progressTrack = solid({ fill: '#111111' })
-  t.progressFill  = solid({ fill: '#22cc22' })
+  t.skins.default.progressTrack = solid({ fill: '#111111' })
+  t.skins.default.progressFill  = solid({ fill: '#22cc22' })
   return t
 }
 
@@ -25,8 +25,8 @@ describe('UIProgressBar — composition', () => {
     bar.width = 40; bar.height = 8; bar.value = 0.5
     canvas.update(0)
 
-    expect(bar.trackPanel.background).toBe(t.progressTrack)
-    expect(bar.fillPanel.background).toBe(t.progressFill)
+    expect(bar.trackPanel.background).toBe(t.skins.default.progressTrack)
+    expect(bar.fillPanel.background).toBe(t.skins.default.progressFill)
   })
 
   it('an explicit trackBackground/fillBackground overrides the theme', () => {

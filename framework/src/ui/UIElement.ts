@@ -22,6 +22,12 @@ export abstract class UIElement {
   /** When `false`, a `UITheme` will not assign a background to this element. */
   themed: boolean = true
 
+  /** Which named skin (`UITheme.skins[skinName]`) this element resolves its themed
+   *  art from. Defaults to `'default'` — the theme's baseline skin. Lets one theme
+   *  hold multiple interchangeable looks (e.g. `'default'`, `'wood'`) that different
+   *  widgets can each opt into by name. */
+  skinName: string = 'default'
+
   /**
    * The `UITheme` most recently applied to this element (set by `UITheme.applyTo`),
    * or `null` if none has been. Tracked so {@link addChild} can propagate an

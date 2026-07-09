@@ -75,36 +75,43 @@ export class UIButton extends UIElement {
     }
 
     // No theme-dispatch code lives in UITheme for this widget — instead we read
-    // `appliedTheme` directly here and forward the relevant values onto `bgPanel`/
-    // `label` each frame. An explicit `background` always wins over the theme (mirrors
-    // the old "if (!el.background)" gate in UITheme.applyTo).
+    // `appliedTheme` directly here, resolve our own skin via `getSkin(this.skinName)`,
+    // and forward the relevant values onto `bgPanel`/`label` each frame. An explicit
+    // `background` always wins over the theme (mirrors the old "if (!el.background)"
+    // gate in UITheme.applyTo).
     const theme = this.appliedTheme
+    const skin  = theme?.getSkin(this.skinName) ?? null
 
     this.bgPanel.width  = this.width
     this.bgPanel.height = this.height
 
-    const baseBg    = this.background        ?? theme?.panel         ?? null
-    const hoverBg   = this.hoverBackground   ?? theme?.buttonHover   ?? null
-    const pressedBg = this.pressedBackground ?? theme?.buttonPressed ?? null
-    const hoverTint   = theme ? theme.buttonHoverTint   : this.hoverTint
-    const pressedTint = theme ? theme.buttonPressedTint : this.pressedTint
+    const baseBg    = this.background        ?? skin?.button      ?? null
+    const hoverBg   = this.hoverBackground   ?? skin?.buttonHover ?? null
+    const pressedBg = this.pressedBackground ?? skin?.buttonDown  ?? null
+    const hoverTint   = skin ? { ...skin.buttonTint }                                          : this.hoverTint
+    const pressedTint = skin ? { ...skin.buttonTint, strength: Math.min(1, skin.buttonTint.strength * 1.5) } : this.pressedTint
 
     // Sprite/colour background path (state-aware). Falls back to the built-in default
     // look when neither an explicit background nor a theme is set.
     const stateBg = this._isPressed ? pressedBg : this._isHovered ? hoverBg : baseBg
     this.bgPanel.background = stateBg ?? baseBg ?? this._defaultBackground
-    // Tint only when the state had no explicit background/theme art of its own — a
-    // dedicated sprite for that state is used as-is, untinted.
-    this.bgPanel.tint = stateBg          ? null
+    // Tint whenever the resolved state background is just the base art reused as-is
+    // (no dedicated hover/pressed art was given — e.g. a skin built from a single
+    // sprite, where `ThemeSkin` reuses `button` for every state) — so a one-sprite
+    // skin still gets hover/pressed feedback via tint instead of looking static.
+    // A genuinely distinct dedicated sprite for that state (explicitly authored,
+    // different from the base) is drawn as-is, untinted.
+    const isReusedBase = stateBg === baseBg
+    this.bgPanel.tint = !isReusedBase ? null
                        : this._isPressed ? pressedTint
                        : this._isHovered ? hoverTint
                        : null
 
     this.label.width       = this.width
     this.label.offset      = new Vector2(0, Math.max(0, (this.height - this.label.fontSize) / 2))
-    this.label.font        = theme?.fontFamily ?? this.font
+    this.label.font        = skin?.fontFamily ?? theme?.fontFamily ?? this.font
     this.label.color       = this.textColor ?? theme?.colors.text ?? this.label.color
-    this.label.bitmapFont  = this.bitmapFont ?? theme?.font ?? null
+    this.label.bitmapFont  = this.bitmapFont ?? skin?.font ?? theme?.font ?? null
     this.label.fontSize    = this.fontSize
   }
 

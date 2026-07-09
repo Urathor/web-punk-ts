@@ -28,5 +28,16 @@ export interface Tint {
  * draws rectangles (today's look); a nine-slice background draws sprites.
  */
 export interface UIBackground {
+  /**
+   * Optional per-draw overrides a widget (e.g. `UIPanel`) can set before calling
+   * {@link draw} so its own `showFill`/`showBorder` flags take effect regardless of
+   * which background strategy is assigned. `SolidColorBackground` honors these;
+   * `NineSliceBackground` has no separate fill/border layer to toggle (the look is
+   * baked into the sprite pixels) and silently ignores them — a documented
+   * limitation, not a bug. Implementations aren't required to declare these.
+   */
+  showFill?:   boolean
+  showBorder?: boolean
+
   draw(renderer: IRenderer, bounds: IRect, tint?: Tint): void
 }

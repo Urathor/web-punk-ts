@@ -804,7 +804,7 @@ import {
   UIManager, UICanvas, UIElement, Anchor, BitmapFont,
   UIText, UIPanel, UIProgressBar, UIButton, UIImage, UIGrid,
   // Sprite skins & theming:
-  UITheme, nineSlice, solid,
+  UITheme, ThemeSkin, nineSlice, solid, generateNineSliceSprite,
 } from 'webpunk.ts'
 ```
 
@@ -855,6 +855,7 @@ The base `UIElement` class provides these shared members:
 | `sortOrder` | Render order within the canvas (lower renders first) |
 | `background` | `UIBackground \| null` — sprite/colour background strategy; `null` uses the widget's own colour fields. Set by a `UITheme` or directly (an explicit value always wins). |
 | `themed` | When `false`, a `UITheme` will not assign a background to this element |
+| `skinName` | Which named skin (`theme.skins[skinName]`) this element resolves its themed art from (default `'default'`) — lets one theme hold multiple interchangeable looks |
 | `getPosition()` | Compute top-left position: `anchor + offset` |
 | `getBounds()` | Get bounding `Rect` in logical pixels |
 | `render(renderer, interpolation)` | Abstract — each widget implements this |
@@ -907,7 +908,7 @@ position the text (`'left'`, `'center'`, or `'right'`) within it.
 | `fillColor` | Background colour |
 | `borderColor` | Border colour |
 | `borderWidth` | Border thickness |
-| `showFill` / `showBorder` | Toggle fill and border independently |
+| `showFill` / `showBorder` | Toggle fill and border independently — works whether or not a `background` (sprite/colour strategy) is assigned; a `SolidColorBackground` honors both, a nine-slice sprite background has no separate fill/border layer to toggle and ignores them (the look is baked into the art) |
 
 **`UIProgressBar`** — a fill bar for health, loading, etc., composed of `trackPanel`/
 `fillPanel` (`UIPanel` children) plus an internal border overlay and an optional
@@ -1072,54 +1073,108 @@ the widget uses its colour fields exactly as before — the colour look is alway
 fallback, so existing UIs keep working unchanged.
 
 ```typescript
-import { nineSlice, solid, UITheme } from 'webpunk.ts'
+import { nineSlice, solid, generateNineSliceSprite, UITheme } from 'webpunk.ts'
 
 // A nine-patch from a sprite (zero insets = a plain stretched sprite):
 panel.background = nineSlice(sheet.sprite(0, 0), { left: 4, top: 4, right: 4, bottom: 4 })
 
-// Or the explicit colour strategy (the default look):
+// A procedurally-baked nine-slice tile (no art required) — the same primitive the
+// built-in default theme uses internally, callable directly for custom generated skins:
+panel.background = generateNineSliceSprite({ fill: '#223044', border: '#48597a', radius: 6 })
+
+// Or the explicit flat colour strategy (no nine-slice scaling, not recommended for
+// skin art but fine for one-off swatches):
 panel.background = solid({ fill: '#223044', border: '#48597a' })
 ```
 
-**Themes.** A `UITheme` assigns backgrounds **and** text styling — colour tokens
-(`colors.text` / `border` / `fill`) plus a `fontFamily` and an optional default
-`BitmapFont` — to widgets by kind. Set one globally on the `UIManager`, or per `UICanvas`:
+**Themes & skins.** A `UITheme` holds shared **colour tokens** (`colors.text` / `border`
+/ `fill`), a `fontFamily` and an optional default `BitmapFont` — plus a **named registry
+of `ThemeSkin`s** (`theme.skins`), each a matched bundle of the actual widget-category
+art (`panel`, `button`, `buttonHover`, `buttonDown`, `buttonTint`, `progressTrack`,
+`progressFill`, plus an optional per-skin `font`/`fontFamily` override). A theme always
+has a `'default'` skin; register more with `theme.addSkin(name, skin)`, and a widget
+opts into one via its own `skinName` (default `'default'`) — so one theme can hold
+multiple interchangeable looks (e.g. `'default'`, `'danger'`, `'block'`) and different
+widgets can each pick whichever they want:
 
 ```typescript
-// Procedural built-in skin — no art assets required:
-engine.ui.setTheme(UITheme.createDefault())                       // global default
+import { UITheme, ThemeSkin, nineSlice, generateNineSliceSprite, Rect } from 'webpunk.ts'
 
-// Customise the colour tokens, font and corner radius. `fill` / `border` / `accent`
-// are baked into the sprite backgrounds; `text` + `fontFamily` style every text widget:
-engine.ui.setTheme(UITheme.createDefault({
+// Procedural built-in skin — no art assets required. Equivalent to
+// `new UITheme()` with its `'default'` ThemeSkin generated from these colours:
+const theme = UITheme.createDefault({
   fill:       '#223044',
   border:     '#48597a',
-  accent:     '#e0a030',
-  text:       '#ffe9c0',
-  fontFamily: '"Science Gothic", sans-serif',
-  radius:     4,
+  accent:     '#5a9bd8',
+  text:       '#ffffff',
+  radius:     6,
+})
+
+// Register additional named skins — every `ThemeSkin` field is optional; anything
+// left unset is procedurally generated. Here 'danger' gives its own panel/hover
+// tiles (via the same `generateNineSliceSprite()` the default skin uses internally)
+// but leaves `buttonDown` unset, so pressing falls back to tinting `buttonHover`.
+theme.addSkin('danger', new ThemeSkin({
+  panel:       generateNineSliceSprite({ fill: '#5a2020', border: '#7a3030', radius: 6 }),
+  buttonHover: generateNineSliceSprite({ fill: '#7a3030', border: '#9a4040', radius: 6 }),
 }))
 
-// Or load a real atlas (skin.json names regions, insets, font, fontFamily and colours):
+// A skin's art can also be a real loaded texture instead of procedural tiles —
+// nine-sliced so its border/corners stay crisp while the middle stretches:
+const blockTexture = await engine.assets.loadTexture('/assets/block_blue.png')
+theme.addSkin('block', new ThemeSkin({
+  panel: nineSlice(
+    { texture: blockTexture, srcRect: new Rect(0, 0, 64, 64) },
+    { left: 30, top: 30, right: 30, bottom: 30 },
+  ),
+}))
+
+engine.ui.setTheme(theme)
+
+// A widget opts into a specific skin via its own `skinName` (default `'default'`).
+// A UIButton/UIProgressBar re-reads its skin every `update()`, so `skinName` can be
+// set any time; a plain UIPanel/UIText resolves its background once — set `skinName`
+// BEFORE adding it to a themed canvas.
+const heal = buttonRow.addChild(new UIButton(engine.input))
+heal.skinName = 'block'    // only `panel` was given — see the tint note below
+
+const damage = buttonRow.addChild(new UIButton(engine.input))
+damage.skinName = 'danger' // dedicated `panel`/`buttonHover` art
+
+// Or load a real atlas (skin.json names regions, insets, font, fontFamily and colours)
+// as the theme's 'default' skin:
 engine.ui.setTheme(await UITheme.load('/ui/skin.json', engine.assets))
 
 hudCanvas.setTheme(myOtherTheme)                                  // per-canvas override
 ```
 
+See `template/src/scenes/GameScene.ts` for this exact example wired up end-to-end
+(including the `preload()` texture load).
+
 Themes are applied when a widget is added (`canvas.addElement`) and re-applied to
 existing children by `setTheme`. Applying a theme propagates `colors.text` to
 `UIText.color` (and, in turn, `UIButton.label.color`), and `fontFamily` to each text
 widget's `font` — so changing the theme's colour/font tokens restyles the **text** too,
-not just the backgrounds.
+not just the backgrounds. A `UIButton`/`UIProgressBar` reads its skin fresh every
+`update()` (via `theme.getSkin(this.skinName)`), so changing `skinName` on those widgets
+at runtime takes effect immediately; a plain `UIPanel`/`UIText`'s background resolves
+once, the same moment any other theme assignment does.
 
 **Precedence (the fallback guarantee):** an explicit `widget.background` you set wins
 over a per-canvas theme, which wins over the global manager theme, which wins over the
 widget's own colour fields. Opt a widget out of theming with `widget.themed = false`, or
 force the colour look with `widget.background = solid({ … })`.
 
-**Buttons** support per-state backgrounds (`hoverBackground` / `pressedBackground`); when
-a state has none, the base background is drawn with a `hoverTint` / `pressedTint` (lighten
-/ darken). **Progress bars** take a `trackBackground` + `fillBackground` with
+**Buttons** support per-state backgrounds (`hoverBackground` / `pressedBackground` on the
+widget, or `buttonHover` / `buttonDown` on a `ThemeSkin`); when a state falls back to the
+*same* background object as the base (either because no dedicated art was given for that
+skin at all — the `'block'` skin above — or a `ThemeSkin` field was left unset and reused
+the base by default), it's drawn with a single `ThemeSkin.buttonTint` colour overlay
+instead — hover applies it at its own `strength`, pressed applies it more intensely
+(`1.5×`, capped at `1`), so both states stay visually distinct from one tint definition
+even for a one-sprite skin. A genuinely *distinct* dedicated sprite for a state (like
+`'danger'`'s `buttonHover` above) is drawn as-is, untinted. **Progress bars** take a
+`trackBackground` + `fillBackground` (or a skin's `progressTrack`/`progressFill`) with
 `fillMode: 'stretch' | 'crop'`. **`UIImage`** can be drawn as a nine-slice by setting its
 `insets`.
 

@@ -1,13 +1,17 @@
-import { UIButton, UITheme, UICanvas, UIManager, solid } from '@engine/ui'
+import { UIButton, UITheme, UICanvas, UIManager, solid, ThemeSkin } from '@engine/ui'
 import { Vector2 } from '@engine/math'
 import { MockRenderer } from '../mocks/MockRenderer'
 import { MockInputManager } from '../mocks/MockInputManager'
 
 function makeTheme(): UITheme {
-  const t = new UITheme()
-  t.panel         = solid({ fill: '#223344' })
-  t.buttonHover   = solid({ fill: '#445566' })
-  t.buttonPressed = solid({ fill: '#112233' })
+  const t     = new UITheme()
+  const panel = solid({ fill: '#223344' })
+  t.skins.default = new ThemeSkin({
+    panel,
+    button:      panel,   // normal-state art defaults to panel when constructed this way
+    buttonHover: solid({ fill: '#445566' }),
+    buttonDown:  solid({ fill: '#112233' }),
+  })
   t.colors.text   = '#eeeeee'
   t.fontFamily    = 'Tahoma'
   return t
@@ -46,7 +50,7 @@ describe('UIButton — theming', () => {
     btn.width = 40; btn.height = 12
     canvas.update(0)
 
-    expect(btn.bgPanel.background).toBe(t.panel)
+    expect(btn.bgPanel.background).toBe(t.skins.default.panel)
   })
 
   it('swaps to the buttonHover token while hovered', () => {
@@ -62,7 +66,7 @@ describe('UIButton — theming', () => {
     input.mousePosition = new Vector2(5, 5)   // inside the button's bounds
     canvas.update(0)
 
-    expect(btn.bgPanel.background).toBe(t.buttonHover)
+    expect(btn.bgPanel.background).toBe(t.skins.default.buttonHover)
     expect(btn.bgPanel.tint).toBeNull()   // dedicated art for the state — untinted
   })
 
@@ -80,7 +84,7 @@ describe('UIButton — theming', () => {
     input.press(0)
     canvas.update(0)
 
-    expect(btn.bgPanel.background).toBe(t.buttonPressed)
+    expect(btn.bgPanel.background).toBe(t.skins.default.buttonDown)
   })
 
   it('an explicit hoverBackground/pressedBackground overrides the theme', () => {
@@ -107,6 +111,28 @@ describe('UIButton — theming', () => {
     btn.update(0)
 
     expect(btn.bgPanel.background).toBe(explicit)
+  })
+
+  it('a one-sprite skin (no dedicated hover/pressed art) reuses the same sprite and tints it, instead of swapping to a mismatched generated tile', () => {
+    const t        = new UITheme()
+    const oneSprite = solid({ fill: '#334455' })
+    t.skins.default = new ThemeSkin({ panel: oneSprite })
+
+    const input = new MockInputManager()
+    const btn   = new UIButton(input)
+    btn.width = 40; btn.height = 12
+    t.applyTo(btn)
+
+    input.mousePosition = new Vector2(5, 5)   // hover
+    btn.update(0)
+    expect(btn.bgPanel.background).toBe(oneSprite)
+    expect(btn.bgPanel.tint).toEqual(t.skins.default.buttonTint)
+
+    input.press(0)                            // pressed
+    btn.update(0)
+    expect(btn.bgPanel.background).toBe(oneSprite)
+    expect(btn.bgPanel.tint?.color).toBe(t.skins.default.buttonTint.color)
+    expect(btn.bgPanel.tint?.strength).toBeGreaterThan(t.skins.default.buttonTint.strength)
   })
 
   it('tints the default/base background on hover when no theme art is set for that state', () => {

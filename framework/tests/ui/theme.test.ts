@@ -6,7 +6,7 @@ import { MockInputManager } from '../mocks/MockInputManager'
 
 function makeTheme(): UITheme {
   const t = new UITheme()
-  t.panel = solid({ fill: '#abcdef' })
+  t.skins.default.panel = solid({ fill: '#abcdef' })
   return t
 }
 
@@ -15,7 +15,7 @@ describe('UITheme.applyTo', () => {
     const t = makeTheme()
     const p = new UIPanel()
     t.applyTo(p)
-    expect(p.background).toBe(t.panel)
+    expect(p.background).toBe(t.skins.default.panel)
   })
 
   it('skips elements that opted out via themed = false', () => {
@@ -46,8 +46,8 @@ describe('theme resolution', () => {
     mgr.setTheme(t)
     const after = canvas.addElement(new UIPanel())
 
-    expect(before.background).toBe(t.panel)
-    expect(after.background).toBe(t.panel)
+    expect(before.background).toBe(t.skins.default.panel)
+    expect(after.background).toBe(t.skins.default.panel)
   })
 
   it('per-canvas theme overrides the manager and survives later propagation', () => {
@@ -60,7 +60,7 @@ describe('theme resolution', () => {
     const p = canvas.addElement(new UIPanel())
 
     expect(canvas.theme).toBe(canvasTheme)
-    expect(p.background).toBe(canvasTheme.panel)
+    expect(p.background).toBe(canvasTheme.skins.default.panel)
   })
 })
 
@@ -172,7 +172,7 @@ describe('composite widget theming (Stage 1 acceptance criteria)', () => {
 
     const widget = canvas.addElement(new MyWidget())
 
-    expect(widget.panel.background).toBe(t.panel)
+    expect(widget.panel.background).toBe(t.skins.default.panel)
     expect(widget.label.color).toBe('#ff00ff')
     expect(widget.label.font).toBe('monospace')
   })

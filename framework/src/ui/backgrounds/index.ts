@@ -11,6 +11,8 @@ export { SolidColorBackground } from './SolidColorBackground'
 export type { SolidColorOptions } from './SolidColorBackground'
 export { NineSliceBackground } from './NineSliceBackground'
 export type { NineSliceSource } from './NineSliceBackground'
+export { generateNineSliceSprite, drawRoundedTile } from './generate'
+export type { GenerateNineSliceOptions } from './generate'
 
 /** Build a nine-slice sprite background. Zero insets give a plain stretched sprite. */
 export function nineSlice(sprite: Sprite, insets: NineSliceInsets): NineSliceBackground {

@@ -102,12 +102,13 @@ export class UIProgressBar extends UIElement {
 
   update(_dt: number): void {
     const theme = this.appliedTheme
+    const skin  = theme?.getSkin(this.skinName) ?? null
     const ratio = Math.max(0, Math.min(1, this.value))
     const fillPanel = this.fillPanel as ClippedPanel
 
     this.trackPanel.width      = this.width
     this.trackPanel.height     = this.height
-    this.trackPanel.background = this.trackBackground ?? theme?.progressTrack ?? null
+    this.trackPanel.background = this.trackBackground ?? skin?.progressTrack ?? null
     this.trackPanel.fillColor  = this.backgroundColor
 
     this.borderPanel.width       = this.width
@@ -120,7 +121,7 @@ export class UIProgressBar extends UIElement {
       this.label.offset = new Vector2(0, Math.max(0, (this.height - this.label.fontSize) / 2))
     }
 
-    const fillBg = this.fillBackground ?? theme?.progressFill ?? null
+    const fillBg = this.fillBackground ?? skin?.progressFill ?? null
 
     if (ratio <= 0) {
       fillPanel.visible  = false

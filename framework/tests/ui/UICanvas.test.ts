@@ -43,7 +43,7 @@ describe('UICanvas recurses into child subtrees', () => {
   it('applies a theme to children added before the panel joins the canvas', () => {
     const canvas = new UICanvas('hud')
     const theme  = new UITheme()
-    theme.panel  = solid({ fill: '#abcdef' })
+    theme.skins.default.panel = solid({ fill: '#abcdef' })
 
     const panel = new UIPanel()
     const nested = panel.addChild(new UIPanel())
@@ -51,8 +51,8 @@ describe('UICanvas recurses into child subtrees', () => {
     canvas.setTheme(theme)
     canvas.addElement(panel)
 
-    expect(panel.background).toBe(theme.panel)
-    expect(nested.background).toBe(theme.panel)
+    expect(panel.background).toBe(theme.skins.default.panel)
+    expect(nested.background).toBe(theme.skins.default.panel)
   })
 
   it('applies the theme to a child added AFTER its parent already joined a themed canvas', () => {
@@ -60,14 +60,14 @@ describe('UICanvas recurses into child subtrees', () => {
     // `panel.addChild(...)` afterward — the child must still pick up the theme.
     const canvas = new UICanvas('hud')
     const theme  = new UITheme()
-    theme.panel  = solid({ fill: '#abcdef' })
+    theme.skins.default.panel = solid({ fill: '#abcdef' })
     canvas.setTheme(theme)
 
     const panel = canvas.addElement(new UIPanel())
     const child = panel.addChild(new UIPanel())
     const grandchild = child.addChild(new UIPanel())
 
-    expect(child.background).toBe(theme.panel)
-    expect(grandchild.background).toBe(theme.panel)
+    expect(child.background).toBe(theme.skins.default.panel)
+    expect(grandchild.background).toBe(theme.skins.default.panel)
   })
 })

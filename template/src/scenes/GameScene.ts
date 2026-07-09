@@ -1,5 +1,9 @@
 import type { IScene, IEngine, IRenderer } from 'webpunk.ts'
-import { UICanvas, UIPanel, UIProgressBar, UIText, TextAlign, UIButton, UIGrid, UITheme, Anchor, solid, Vector2 } from 'webpunk.ts'
+import {
+  UICanvas, UIPanel, UIProgressBar, UIText, TextAlign, UIButton, UIGrid,
+  UITheme, ThemeSkin, generateNineSliceSprite, nineSlice, Anchor, Vector2, Rect,
+} from 'webpunk.ts'
+import type { Texture } from 'webpunk.ts'
 
 /**
  * Main gameplay scene stub.
@@ -7,6 +11,13 @@ import { UICanvas, UIPanel, UIProgressBar, UIText, TextAlign, UIButton, UIGrid, 
  */
 export class GameScene implements IScene {
   private _engine!: IEngine
+  private _panelTexture!: Texture
+
+  /** Preloaded before onEnter — see `docs`/`IScene.preload`. Swap the path (or
+   *  delete this whole scene block) to use your own art instead. */
+  async preload(engine: IEngine): Promise<void> {
+    this._panelTexture = await engine.assets.loadTexture('/assets/block_blue.png')
+  }
 
   onEnter(engine: IEngine): void {
     this._engine = engine
@@ -24,24 +35,50 @@ export class GameScene implements IScene {
     // Recolour the whole skin here: every button / panel / bar tile is derived
     // from these few colours, so changing them restyles all widgets at once.
     // Edit the values (or delete any key to keep its default) to suit your game.
-    engine.ui.setTheme(UITheme.createDefault({
+    const theme = UITheme.createDefault({
       fill: '#223044',   // base panel & button fill
       border: '#48597a',   // outlines / borders
       accent: '#5a9bd8',   // progress fill + grid-selection highlight
       text: '#ffffff',   // label text colour
       radius: 6,           // corner roundness in px
+    })
+
+    // A theme can hold more than one named skin (`ThemeSkin`) — e.g. a reddish
+    // look for destructive actions, registered alongside the theme's 'default'
+    // skin. `generateNineSliceSprite()` is the same procedural tile generator
+    // `createDefault()` uses internally, callable directly for custom variants.
+    // Any field left unset (e.g. no dedicated buttonDown here) is generated from
+    // ThemeSkin's own `generate` colours instead.
+    theme.addSkin('danger', new ThemeSkin({
+      panel:       generateNineSliceSprite({ fill: '#5a2020', border: '#7a3030', radius: 6 }),
+      buttonHover: generateNineSliceSprite({ fill: '#7a3030', border: '#9a4040', radius: 6 }),
     }))
+
+    // A skin's `panel` can also be real sprite art instead of procedural tiles —
+    // block_blue.png (loaded in `preload`) as a nine-slice: the 16px border/corner
+    // rivets stay crisp while the flat middle stretches to fit each panel's size.
+    theme.addSkin('block', new ThemeSkin({
+      panel: nineSlice(
+        { texture: this._panelTexture, srcRect: new Rect(0, 0, 64, 64) },
+        { left: 30, top: 30, right: 30, bottom: 30 },
+      ),
+    }))
+    engine.ui.setTheme(theme)
     const hud = engine.ui.add(new UICanvas('demo-hud', 100))
     
     // The cluster is anchored to screen centre. Each widget anchors to
     // Anchor.Center; its offset positions it relative to that point, so the
     // 150×70 panel is centred by offsetting it by half its size.
-    // Themed container panel (nine-slice background supplied by the theme).
-    const panel = hud.addElement(new UIPanel())
+    // This container panel opts into the 'block' skin registered above (set
+    // BEFORE addElement — a plain UIPanel resolves its background once, the
+    // moment the theme is applied, unlike UIButton/UIProgressBar which re-read
+    // their skin every frame).
+    const panel = new UIPanel()
     panel.anchor = Anchor.Center
     panel.width = 175
     panel.height = 70
     panel.offset = new Vector2(-panel.width / 2, -panel.height / 2)
+    hud.addElement(panel)
 
     const title = panel.addChild(new UIText())
     title.anchor = Anchor.TopCenter
@@ -70,15 +107,18 @@ export class GameScene implements IScene {
     buttonRow.offset = new Vector2(16, 8)
 
     const heal = buttonRow.addChild(new UIButton(engine.input))
+    heal.skinName = 'block'
     heal.label.text = 'Heal 10%'
     heal.width = 66
     heal.height = 16
     heal.onClick = () => { health.value = Math.min(1, health.value + 0.1) }
 
-    // Explicit background overrides the theme (precedence demo): this swatch
-    // keeps the flat-rectangle colour look even while a theme is active.
-    // Interactive themed button — hover/press reuse the theme's state tints.
+    // Interactive themed button, opted into the 'danger' skin registered above
+    // via its own `skinName` — a UIButton resolves its skin fresh every frame,
+    // so `skinName` can be (re)assigned any time, unlike a plain UIPanel/UIText
+    // (which resolves its background once, when the theme is first applied).
     const damage = buttonRow.addChild(new UIButton(engine.input))
+    damage.skinName = 'danger'
     damage.label.text = 'Damage 10%'
     damage.width = 66
     damage.height = 16

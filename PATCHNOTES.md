@@ -3,6 +3,57 @@
 Running release notes for **webpunk.ts** and the `create-webpunk` scaffolder.
 Newest entries first.
 
+## 0.2.8
+
+### Canvas UI System
+- **Fixed: `UIPanel.showFill`/`showBorder` now actually work when a `background` is
+  assigned** — previously `UIPanel.render()` returned before ever checking these
+  flags once any background (theme-assigned or explicit) was set, so toggling them
+  silently did nothing for any themed/sprite-backed panel. `UIBackground` gained
+  optional `showFill?`/`showBorder?` properties; `UIPanel` now writes its own flags
+  onto whatever background is assigned before drawing, with no `instanceof`/
+  concrete-type knowledge of the background strategy. `SolidColorBackground` honors
+  them; a nine-slice sprite background has no separate fill/border layer to toggle
+  and silently ignores them (a documented limitation, not a bug — the look is baked
+  into the art).
+- **`generateNineSliceSprite(opts)`** — the procedural rounded-rect tile generator
+  previously private inside `UITheme.createDefault()` is now a public factory
+  (`framework/src/ui/backgrounds/generate.ts`, exported from `webpunk.ts`). Bakes one
+  tile to its own offscreen canvas and returns a `NineSliceBackground` (falling back
+  to a `SolidColorBackground` when no 2D canvas context is available, e.g. headless).
+  Usable directly to build custom generated skins, not just internally.
+- **`ThemeSkin` + `UITheme.skins` registry — themes can now hold multiple named
+  skins.** Each widget category's background is no longer a single fixed field on
+  `UITheme`; a `ThemeSkin` is a matched bundle (`panel`, `button`, `buttonHover`,
+  `buttonDown`, `buttonTint`, `progressTrack`, `progressFill`, plus an optional
+  per-skin `font`/`fontFamily` override) and `UITheme.skins: Record<string,
+  ThemeSkin>` holds any number of them by name (always at least `'default'`).
+  `theme.addSkin(name, skin)` registers more; a widget opts into one via its own new
+  `skinName` field (default `'default'`) — inherited from `UIElement`, so any widget
+  (built-in or custom) supports skin selection with zero extra plumbing. Every
+  `ThemeSkin` field is optional and procedurally generated when omitted, so
+  `new ThemeSkin()` alone reproduces the default look. `UITheme.createDefault()` and
+  `UITheme.load()` both now funnel through `ThemeSkin` — one canonical construction
+  path instead of duplicated generation/parsing logic.
+- **Breaking:** `UITheme.panel` / `buttonHover` / `buttonPressed` / `progressTrack` /
+  `progressFill` / `buttonHoverTint` / `buttonPressedTint` (flat fields) are removed
+  — use `theme.skins.default.*` (or `theme.getSkin(name)`) instead. `buttonTint` is
+  now a single field per skin (instead of separate hover/pressed tints); hover
+  applies it at its own strength, pressed applies it more intensely (`1.5×`, capped
+  at `1`) so both states stay visually distinct from one tint definition. No
+  back-compat shim, consistent with this codebase's existing precedent for internal
+  UI restructurings.
+- **Fixed: a one-sprite `ThemeSkin` (only `panel`/`button` supplied) now tints that
+  sprite for hover/pressed feedback, instead of swapping to an unrelated
+  procedurally-generated tile.** `ThemeSkin` only auto-generates *distinct*
+  `buttonHover`/`buttonDown` tiles when the caller didn't supply their own
+  `panel`/`button` art either (preserving the default skin's classic
+  lighter-hover/darker-pressed look); when the caller *did* supply real art but left
+  hover/pressed unset, those fields now default to the same reference as `button`,
+  and `UIButton` tints that shared reference via `buttonTint` instead of drawing it
+  as untinted "dedicated" art. A genuinely distinct hover/pressed sprite (explicitly
+  supplied) is still drawn as-is, untinted.
+
 ## 0.2.7
 
 A SOLID/professional-standards remediation pass (see `docs/solid-review-tasklist.md`)
